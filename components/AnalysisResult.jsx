@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { analyzeDrawing } from '@/utils/drawinganalysis';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner'; // ✅ FIXED
 
 export default function AnalysisResult({ 
   drawingId, 
@@ -136,7 +136,6 @@ export default function AnalysisResult({
 
   return (
     <div className="space-y-4">
-      {/* Child Info Header */}
       {childName && (
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
           <h3 className="text-lg font-semibold text-blue-800 mb-2">Child Information</h3>
@@ -153,12 +152,10 @@ export default function AnalysisResult({
         </div>
       )}
 
-      {/* Analysis Sections */}
       {renderSection('Emotional Indicators', analysis.emotional?.analysis || analysis.emotional, 'emotional')}
       {renderSection('Cognitive Development', analysis.cognitive?.analysis || analysis.cognitive, 'cognitive')}
       {renderSection('Creative Expression', analysis.creative?.analysis || analysis.creative, 'creative')}
 
-      {/* Recommendations */}
       {analysis.recommendations?.actions?.length > 0 && (
         <div className="bg-green-50 p-4 rounded-lg border border-green-100">
           <div 
