@@ -1,17 +1,21 @@
 "use client";
 import { useEffect } from "react";
-import { supabase } from "@/utils/supabaseClient";
+import { createClient } from "@supabase/supabase-js"; // ✅ Added import
+import { supabase } from "@/utils/supabaseClient"; // ❓ Remove if unused
 import { useRouter } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function Logout() {
-  const supabase = createClient();
+  const supabaseClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ); // ✅ Properly initialized client
   const router = useRouter();
 
   useEffect(() => {
     const logout = async () => {
       try {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await supabaseClient.auth.signOut();
         if (!error) {
           router.push("/login");
         }
@@ -25,4 +29,3 @@ export default function Logout() {
 
   return <LoadingSpinner />;
 }
-

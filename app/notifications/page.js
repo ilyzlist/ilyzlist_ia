@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
+import { createClient } from "@supabase/supabase-js"; // ✅ Added import
+import {
   Home as HomeIcon,
   Upload as UploadIcon,
   AccountCircle as AccountCircleIcon,
@@ -15,7 +16,10 @@ import {
 } from "@mui/icons-material";
 
 export default function NotificationsPage() {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ); // ✅ Proper initialization
 
   const router = useRouter();
   const [notifications, setNotifications] = useState([
@@ -49,9 +53,9 @@ export default function NotificationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleGoBack = () => router.back();
-  
+
   const handleNotificationClick = (notification) => {
-    setNotifications(notifications.filter(n => n.id !== notification.id));
+    setNotifications(notifications.filter((n) => n.id !== notification.id));
     if (notification.action) {
       router.push(notification.action);
     }
@@ -69,7 +73,7 @@ export default function NotificationsPage() {
             Notifications
           </h1>
         </div>
-        
+
         <div className="flex gap-4">
           <button
             onClick={() => setShowSearch(!showSearch)}
@@ -198,4 +202,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-

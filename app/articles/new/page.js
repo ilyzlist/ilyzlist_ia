@@ -6,7 +6,6 @@ import { addArticle } from '@/data/articles';
 import { PsychologyIcon, ChildFriendlyIcon, ArticleIcon } from "@mui/icons-material";
 
 export default function NewArticlePage() {
-  const supabase = createClient();
   const router = useRouter();
   const [article, setArticle] = useState({
     title: '',
@@ -231,4 +230,3 @@ export default function NewArticlePage() {
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js'; // ✅ Import added
 import {
   ArrowBack as ArrowBackIcon,
   Home as HomeIcon,
@@ -10,11 +11,14 @@ import {
 } from '@mui/icons-material';
 
 export default function CancelPage() {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ); // ✅ Proper initialization
   const router = useRouter();
 
   useEffect(() => {
-    // Could add any additional tracking logic here
+    // Optional: Add any cancellation tracking or Supabase logic here
   }, [supabase]);
 
   return (
@@ -70,5 +74,3 @@ export default function CancelPage() {
     </div>
   );
 }
-
-

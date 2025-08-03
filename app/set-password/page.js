@@ -1,13 +1,32 @@
 "use client";
 import { useForm } from "react-hook-form";
+import { createClient } from "@supabase/supabase-js"; // ✅ Import added
 
 export default function SetPassword() {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ); // ✅ Proper initialization
+
   const { register, handleSubmit, watch } = useForm();
   const password = watch("password");
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     console.log(data);
+
+    try {
+      // Example: Update password in Supabase
+      const { error } = await supabase.auth.updateUser({
+        password: data.password
+      });
+      if (error) {
+        console.error("Password update error:", error.message);
+      } else {
+        console.log("Password updated successfully!");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
   };
 
   return (
@@ -57,5 +76,3 @@ export default function SetPassword() {
     </div>
   );
 }
-
-

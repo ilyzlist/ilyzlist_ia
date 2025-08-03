@@ -2,13 +2,16 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabaseClient";
+import { createClient } from "@supabase/supabase-js"; // ✅ Import fixed
 import UploadIcon from "@mui/icons-material/Upload";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LinearProgress from "@mui/material/LinearProgress";
 
 export default function UploadDrawing() {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ); // ✅ Proper initialization
   const router = useRouter();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -60,7 +63,6 @@ export default function UploadDrawing() {
     setError(null);
 
     try {
-      // Upload file to storage
       const fileExt = file.name.split(".").pop();
       const fileName = `${selectedChild}-${Date.now()}.${fileExt}`;
 
@@ -74,7 +76,6 @@ export default function UploadDrawing() {
 
       if (uploadError) throw uploadError;
 
-      // Save metadata to database
       const { error: dbError } = await supabase.from("drawings").insert({
         child_id: selectedChild,
         file_path: uploadData.path,
@@ -160,7 +161,11 @@ export default function UploadDrawing() {
             />
             <label
               htmlFor="file-upload"
-              className={`inline-block px-4 py-2 rounded-lg cursor-pointer ${isUploading ? "bg-gray-200 text-gray-500" : "bg-[#ECF1FF] text-[#3742D1] hover:bg-[#d9e1fa]"}`}
+              className={`inline-block px-4 py-2 rounded-lg cursor-pointer ${
+                isUploading
+                  ? "bg-gray-200 text-gray-500"
+                  : "bg-[#ECF1FF] text-[#3742D1] hover:bg-[#d9e1fa]"
+              }`}
             >
               {file ? "Change File" : "Select File"}
             </label>
@@ -191,7 +196,11 @@ export default function UploadDrawing() {
           disabled={
             isUploading || !file || !selectedChild || children.length === 0
           }
-          className={`w-full py-3 rounded-lg font-medium ${!file || !selectedChild || children.length === 0 || isUploading ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#3742D1] text-white hover:bg-[#2a35b8]"}`}
+          className={`w-full py-3 rounded-lg font-medium ${
+            !file || !selectedChild || children.length === 0 || isUploading
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-[#3742D1] text-white hover:bg-[#2a35b8]"
+          }`}
         >
           {isUploading ? "Uploading..." : "Upload Drawing"}
         </button>
@@ -199,6 +208,3 @@ export default function UploadDrawing() {
     </div>
   );
 }
-
-
-
