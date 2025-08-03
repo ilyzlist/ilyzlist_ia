@@ -1,0 +1,73 @@
+.history-comparison {
+  margin-top: 3rem;
+}
+
+.trends-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.trend-card {
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.trend-card.up {
+  background: #f0f9f0;
+  border-left: 4px solid #7BDCB5;
+}
+
+.trend-card.down {
+  background: #fff0f0;
+  border-left: 4px solid #FF6B6B;
+}
+
+.trend-card .emotion-name {
+  display: block;
+  font-weight: 500;
+  color: #3742D1;
+  text-transform: capitalize;
+}
+
+.trend-card .trend-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.analysis-timeline {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.analysis-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.analysis-card:hover {
+  transform: translateY(-4px);
+}
+
+.analysis-card h4 {
+  margin-top: 0;
+  color: #3742D1;
+}
+
+.preview {
+  color: #666;
+  font-style: italic;
+}

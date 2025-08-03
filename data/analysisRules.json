@@ -1,0 +1,36 @@
+{
+  "emotionalIndicators": {
+    "Happiness": {
+      "colors": ["yellow", "orange", "pink"],
+      "expressions": ["smiling", "open arms"],
+      "composition": "balanced"
+    },
+    "Sadness": {
+      "colors": ["blue", "gray"],
+      "expressions": ["frowning", "tears"],
+      "composition": "empty space"
+    },
+    "Anger": {
+      "colors": ["red", "black"],
+      "expressions": ["sharp lines", "teeth"],
+      "composition": "chaotic"
+    }
+  },
+  "cognitiveIndicators": {
+    "3-5": {
+      "perspective": "no overlapping",
+      "detail": "basic features only",
+      "proportions": "exaggerated"
+    },
+    "5-7": {
+      "perspective": "beginning overlap",
+      "detail": "some clothing details",
+      "proportions": "improving"
+    },
+    "7-9": {
+      "perspective": "simple perspective",
+      "detail": "facial features",
+      "proportions": "mostly correct"
+    }
+  }
+}

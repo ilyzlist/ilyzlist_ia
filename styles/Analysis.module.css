@@ -1,0 +1,82 @@
+/* Emotion Gauges */
+.emotion-gauges {
+  margin: 2rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.gauge-container {
+  margin-bottom: 1rem;
+}
+
+.gauge-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #3742D1;
+}
+
+.gauge-bar {
+  height: 8px;
+  background: linear-gradient(90deg, #7BDCB5, #3742D1);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Milestone Checklist */
+.milestone-checklist {
+  margin: 2rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.milestone-checklist div {
+  padding: 0.8rem;
+  margin-bottom: 0.5rem;
+  border-left: 4px solid;
+  display: flex;
+  align-items: center;
+}
+
+.milestone-checklist .achieved {
+  background-color: #f0f9f0;
+  border-color: #7BDCB5;
+}
+
+.milestone-checklist .developing {
+  background-color: #fff4e5;
+  border-color: #FFA726;
+}
+
+/* Analysis Report */
+.analysis-report {
+  font-family: 'League Spartan', sans-serif;
+  line-height: 1.6;
+}
+
+.analysis-report h2 {
+  color: #3742D1;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.analysis-report .score {
+  font-weight: bold;
+  color: #3742D1;
+  padding: 0.2rem 0.4rem;
+  background: #ECF1FF;
+  border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .emotion-gauges {
+    padding: 0.5rem;
+  }
+  
+  .gauge-label {
+    font-size: 0.9rem;
+  }
+}

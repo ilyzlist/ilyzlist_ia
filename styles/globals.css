@@ -1,0 +1,51 @@
+/* styles/globals.css */
+
+/* Tailwind CSS Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* League Spartan Font Face */
+@font-face {
+  font-family: "League Spartan";
+  src:
+    url("/fonts/league-spartan.woff2") format("woff2"),
+    url("/fonts/league-spartan.woff") format("woff");
+  font-weight: 400; /* Normal */
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "League Spartan";
+  src:
+    url("/fonts/league-spartan-bold.woff2") format("woff2"),
+    url("/fonts/league-spartan-bold.woff") format("woff");
+  font-weight: 700; /* Bold */
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ========== Global Styles ========== */
+/* Set ALL text to black by default (except headings) */
+body {
+  @apply bg-gray-100 text-black;
+  font-family: "League Spartan", "Inter", sans-serif;
+}
+
+/* Preserve colorful headings (h1-h6) */
+h1, h2, h3, h4, h5, h6 {
+  color: inherit;
+}
+
+/* Form Inputs Styling */
+input,
+select,
+textarea {
+  @apply focus:outline-none focus:ring-2 focus:ring-[#3742D1] focus:border-transparent;
+}
+
+/* Custom Classes */
+.custom-class {
+  @apply text-blue-800;
+}

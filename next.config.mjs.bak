@@ -1,0 +1,71 @@
+// next.config.mjs
+import path from 'path';
+import { fileURLToPath } from 'url';
+import webpack from 'webpack'; // Import webpack directly
+
+// Create __dirname equivalent for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Core Next.js configurations
+  reactStrictMode: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  sassOptions: {
+    includePaths: [path.join(__dirname, 'styles')],
+  },
+  images: {
+    domains: ['your-supabase-storage-domain.supabase.co'],
+  },
+
+  // Environment variables configuration
+  env: {
+    DEEPSEEK_API_ENDPOINT: process.env.DEEPSEEK_API_ENDPOINT || 'https://api.deepseek.com/v1',
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  },
+
+  // Security headers
+  headers: async () => {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co"
+          }
+        ]
+      }
+    ];
+  },
+
+  // Webpack configuration (ES Modules compatible)
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.plugins.push(
+        new webpack.DefinePlugin({
+          'process.env.DEEPSEEK_API_KEY': JSON.stringify(process.env.DEEPSEEK_API_KEY),
+          'process.env.SUPABASE_SERVICE_KEY': JSON.stringify(process.env.SUPABASE_SERVICE_KEY),
+        })
+      );
+    }
+    return config;
+  },
+
+  // Production optimizations
+  productionBrowserSourceMaps: false,
+};
+
+export default nextConfig;
