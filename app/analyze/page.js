@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js"; // ✅ Import added
 
 export default function Analyze() {
-  const supabase = createClient();
+  // ✅ Initialize Supabase client (won’t break build)
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       <h1 className="text-4xl font-bold text-blue-600 mb-4">
@@ -28,5 +36,3 @@ export default function Analyze() {
     </div>
   );
 }
-
-

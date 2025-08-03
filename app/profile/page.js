@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from "react";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase } from "@/utils/supabaseClient"; // ✅ Using the exported supabase instance
 import { useRouter } from 'next/navigation';
 import { 
   MdHome, 
@@ -17,7 +17,6 @@ import Head from 'next/head';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ProfilePage() {
-  const supabase = createClient();
   const router = useRouter();
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -188,4 +187,3 @@ function calculateAge(dateOfBirth) {
   const ageDate = new Date(diff);
   return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
-
