@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from "@/utils/supabaseClient";
-import Link from 'next/link';
 import {
   ArrowBack as ArrowBackIcon,
   Home as HomeIcon,
@@ -13,7 +12,7 @@ import {
   Cancel as CancelIcon
 } from '@mui/icons-material';
 
-export default function PaymentConfirmationPage() {
+function PaymentConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
@@ -113,5 +112,13 @@ export default function PaymentConfirmationPage() {
         </button>
       </nav>
     </div>
+  );
+}
+
+export default function PaymentConfirmationPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10 text-[#3742D1]">Loading...</div>}>
+      <PaymentConfirmationContent />
+    </Suspense>
   );
 }
