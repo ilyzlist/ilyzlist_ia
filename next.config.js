@@ -9,8 +9,7 @@ const __dirname = path.dirname(__filename);
 const nextConfig = {
   reactStrictMode: false,
 
-  // ✅ Ajout pour compatibilité Capacitor static export
-  output: 'export',
+ 
 
   eslint: { 
     ignoreDuringBuilds: true,
