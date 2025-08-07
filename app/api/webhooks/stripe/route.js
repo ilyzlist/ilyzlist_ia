@@ -1,19 +1,27 @@
-// app/api/webhooks/stripe/route.js
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+export const config = {
+  api: {
+    bodyParser: false, // 👈 Essentiel pour vérif signature Stripe
+  },
+};
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2022-11-15',
+});
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Plan details (adjust quotas as needed)
+// Plan details
 const PLAN_DETAILS = {
   basic: { analyses: 15, name: 'Basic' },
   premium: { analyses: 25, name: 'Premium' },
-  free: { analyses: 1, name: 'Free' }
+  free: { analyses: 1, name: 'Free' },
 };
 
 export async function POST(request) {
@@ -28,10 +36,14 @@ export async function POST(request) {
   }
 
   let event;
-  const body = await request.text();
+  const rawBody = await request.text(); // 👈 Important pour Stripe
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    event = stripe.webhooks.constructEvent(
+      Buffer.from(rawBody),
+      signature,
+      webhookSecret
+    );
   } catch (err) {
     console.error('⚠️ Webhook signature verification failed:', err.message);
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
@@ -65,8 +77,7 @@ async function handleSubscriptionChange(subscription) {
 
 async function updateUserProfile(subscription, userId) {
   const priceId = subscription.items.data[0].price.id;
-  
-  // Debug logs to trace mismatch
+
   console.log('[WEBHOOK DEBUG] priceId from Stripe:', priceId);
   console.log('[WEBHOOK DEBUG] basic plan env:', process.env.NEXT_PUBLIC_STRIPE_BASIC_PLAN_PRICE_ID);
   console.log('[WEBHOOK DEBUG] premium plan env:', process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PLAN_PRICE_ID);
@@ -74,7 +85,6 @@ async function updateUserProfile(subscription, userId) {
   const planId = getPlanIdFromPrice(priceId);
   const planDetails = PLAN_DETAILS[planId] || PLAN_DETAILS.free;
 
-  // Fallback: find user by customer ID if metadata missing
   if (!userId) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -86,7 +96,6 @@ async function updateUserProfile(subscription, userId) {
 
   console.log(`[WEBHOOK] Updating user ${userId} to plan ${planId}`);
 
-  // Update profile in Supabase
   await supabase
     .from('profiles')
     .update({
@@ -94,11 +103,10 @@ async function updateUserProfile(subscription, userId) {
       current_plan: planId,
       analysis_limit: planDetails.analyses,
       analysis_quota: planDetails.analyses,
-      plan_updated_at: new Date().toISOString()
+      plan_updated_at: new Date().toISOString(),
     })
     .eq('id', userId);
 
-  // Update subscriptions table
   await supabase
     .from('subscriptions')
     .upsert({
@@ -109,7 +117,7 @@ async function updateUserProfile(subscription, userId) {
       plan_type: planId,
       analyses_remaining: planDetails.analyses,
       renews_at: new Date(subscription.current_period_end * 1000).toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     });
 
   console.log('[WEBHOOK] Profile and subscription updated successfully.');
