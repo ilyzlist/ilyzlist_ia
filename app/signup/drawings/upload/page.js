@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js"; // ✅ Import fixed
-import UploadIcon from "@mui/icons-material/Upload";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { Upload as UploadIcon, ArrowBack as ArrowBackIcon } from "@mui/icons-material";
 import LinearProgress from "@mui/material/LinearProgress";
 
 export default function UploadDrawing() {
