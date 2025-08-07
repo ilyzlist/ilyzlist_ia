@@ -9,9 +9,11 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
-    "postinstall": "next telemetry disable"
+    "postinstall": "next telemetry disable",
+    "export": "next export"
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.2",
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@emotion/react": "^11.14.0",
@@ -62,4 +64,5 @@
     "npm": ">=9.0.0",
     "pnpm": ">=8.0.0"
   }
+  
 }

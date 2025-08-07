@@ -9,8 +9,11 @@ const __dirname = path.dirname(__filename);
 const nextConfig = {
   reactStrictMode: false,
 
-  eslint: {
-    ignoreDuringBuilds: true, // ✅ Allow build despite lint errors
+  // ✅ Ajout pour compatibilité Capacitor static export
+  output: 'export',
+
+  eslint: { 
+    ignoreDuringBuilds: true,
   },
 
   env: {
@@ -28,6 +31,8 @@ const nextConfig = {
         pathname: '/storage/v1/object/public/**',
       },
     ],
+    // ✅ Ajout pour éviter erreur avec images dans export static
+    unoptimized: true,
   },
 
   async headers() {
@@ -37,9 +42,9 @@ const nextConfig = {
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" }
-        ]
-      }
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+        ],
+      },
     ];
   },
 
@@ -62,9 +67,9 @@ const nextConfig = {
       use: {
         loader: 'url-loader',
         options: {
-          limit: 100000
-        }
-      }
+          limit: 100000,
+        },
+      },
     });
 
     return config;
@@ -83,11 +88,10 @@ const nextConfig = {
     serverActions: {},
     optimizeCss: true,
     clientRouterFilter: true,
-    optimizeServerReact: true
+    optimizeServerReact: true,
   },
 
   serverExternalPackages: ['@supabase/supabase-js'],
-
   productionBrowserSourceMaps: true,
   compress: true,
   distDir: process.env.NEXT_BUILD_DIR || '.next',

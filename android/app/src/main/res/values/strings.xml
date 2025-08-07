@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ilyzlist</string>
+    <string name="title_activity_main">ilyzlist</string>
+    <string name="package_name">com.ilyzlist.app</string>
+    <string name="custom_url_scheme">com.ilyzlist.app</string>
+</resources>
