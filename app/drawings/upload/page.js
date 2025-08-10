@@ -14,9 +14,10 @@ import {
   Image as ImageIcon,
   Notifications as NotificationsIcon,
   Close as CloseIcon,
+  DriveFileRenameOutline as RenameIcon,
 } from "@mui/icons-material";
 
-// 👇 set your bucket here (env first, fallback to 'drawings')
+// ✅ set your bucket here (env first, fallback to 'drawings')
 const BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_DRAWINGS_BUCKET?.trim() || "drawings";
 
@@ -36,7 +37,7 @@ export default function UploadDrawingPage() {
   // Editable file name (base) + extension
   const [fileBaseName, setFileBaseName] = useState("");
   const [fileExt, setFileExt] = useState("png");
-  
+
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState("");
@@ -46,7 +47,9 @@ export default function UploadDrawingPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
         return;
@@ -71,29 +74,71 @@ export default function UploadDrawingPage() {
     fetchData();
   }, [router]);
 
+  // ---------- name helpers ----------
+  const extFromName = (name) => {
+    const dot = (name || "").lastIndexOf(".");
+    return dot > -1 ? name.slice(dot + 1).toLowerCase() : "png";
+  };
+
+  const baseFromName = (name) => {
+    const dot = (name || "").lastIndexOf(".");
+    const raw = dot > -1 ? name.slice(0, dot) : name || "";
+    return raw;
+  };
+
+  const sanitizeBase = (s) =>
+    (s || "")
+      .replace(/[^a-zA-Z0-9 _-]/g, "") // allow letters, numbers, space, _ and -
+      .trim()
+      .slice(0, 80);
+
+  const slugify = (s) =>
+    (sanitizeBase(s) || "drawing")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .toLowerCase();
+  // ----------------------------------
+
+  const isNameValid = useMemo(
+    () => sanitizeBase(fileBaseName).length > 0,
+    [fileBaseName]
+  );
+
   const canSubmit = useMemo(
-    () => !!currentUser && !!selectedChild && !!file && analysisQuota > 0 && !isUploading,
-    [currentUser, selectedChild, file, analysisQuota, isUploading]
+    () =>
+      !!currentUser &&
+      !!selectedChild &&
+      !!file &&
+      analysisQuota > 0 &&
+      !isUploading &&
+      isNameValid,
+    [currentUser, selectedChild, file, analysisQuota, isUploading, isNameValid]
   );
 
   const clearSelection = () => {
     setFile(null);
     setPreview(null);
+    setFileBaseName("");
+    setFileExt("png");
     setError("");
   };
 
+  // pick from device
   const onPickFromDevice = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
+    setFileExt(extFromName(f.name || "png"));
+    setFileBaseName(sanitizeBase(baseFromName(f.name) || "drawing"));
   };
 
-  // ---- Camera handling ----
+  // ---- camera handling ----
   const openCamera = async () => {
     setCameraError("");
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
+        // fallback to system picker on old browsers
         document.getElementById("pick-camera-fallback")?.click();
         return;
       }
@@ -143,6 +188,8 @@ export default function UploadDrawingPage() {
         const captured = new File([blob], "photo.jpg", { type: "image/jpeg" });
         setFile(captured);
         setPreview(URL.createObjectURL(captured));
+        setFileExt("jpg");
+        setFileBaseName("drawing"); // default; user can edit
         closeCamera();
       },
       "image/jpeg",
@@ -155,13 +202,10 @@ export default function UploadDrawingPage() {
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
+    setFileExt(extFromName(f.name || "jpg"));
+    setFileBaseName(sanitizeBase(baseFromName(f.name) || "drawing"));
   };
   // -------------------------
-
-  const extFromName = (name) => {
-    const dot = name.lastIndexOf(".");
-    return dot > -1 ? name.slice(dot + 1).toLowerCase() : "png";
-  };
 
   const handleUploadThenGoToAnalysis = async () => {
     if (!canSubmit) return;
@@ -169,20 +213,24 @@ export default function UploadDrawingPage() {
     setError("");
 
     try {
-      const ext = extFromName(file.name || "drawing.png");
-      const path = `user-${currentUser.id}/child-${selectedChild}/${Date.now()}.${ext}`;
+      const safeBase = sanitizeBase(fileBaseName) || "drawing";
+      const ext = (fileExt || extFromName(file?.name || "png")).toLowerCase();
+      const slug = slugify(safeBase);
 
-      const { error: upErr } = await supabase
-        .storage
-        .from(BUCKET) // 👈 use configured bucket
+      // nice, stable storage path
+      const path = `user-${currentUser.id}/child-${selectedChild}/${Date.now()}-${slug}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET)
         .upload(path, file, {
-          contentType: file.type || "image/png",
+          contentType: file?.type || `image/${ext}`,
           upsert: false,
         });
 
       if (upErr) {
-        // Friendlier message for the common case
-        if (String(upErr.message || "").toLowerCase().includes("bucket not found")) {
+        if (
+          String(upErr.message || "").toLowerCase().includes("bucket not found")
+        ) {
           throw new Error(
             `Bucket "${BUCKET}" not found. Set NEXT_PUBLIC_SUPABASE_DRAWINGS_BUCKET to your real bucket name (e.g., "drawings-bucket").`
           );
@@ -196,9 +244,9 @@ export default function UploadDrawingPage() {
           user_id: currentUser.id,
           child_id: selectedChild,
           file_path: path,
-          file_name: file.name || `drawing.${ext}`,
-          file_type: file.type || `image/${ext}`,
-          file_size: file.size ?? null,
+          file_name: `${safeBase}.${ext}`, // save the edited name
+          file_type: file?.type || `image/${ext}`,
+          file_size: file?.size ?? null,
           uploaded_at: new Date().toISOString(),
         })
         .select("id")
@@ -228,8 +276,12 @@ export default function UploadDrawingPage() {
           </h1>
         </div>
         <div className="flex gap-4">
-          <Link href="/notifications"><NotificationsIcon className="w-5 h-5 text-[#3742D1]" /></Link>
-          <Link href="/settings"><SettingsIcon className="w-5 h-5 text-[#3742D1]" /></Link>
+          <Link href="/notifications">
+            <NotificationsIcon className="w-5 h-5 text-[#3742D1]" />
+          </Link>
+          <Link href="/settings">
+            <SettingsIcon className="w-5 h-5 text-[#3742D1]" />
+          </Link>
         </div>
       </header>
 
@@ -255,14 +307,20 @@ export default function UploadDrawingPage() {
         <>
           {/* CHILD SELECT */}
           <div className="space-y-2 mb-6">
-            <label className="block text-[#3742D1] font-medium">Select Child</label>
+            <label className="block text-[#3742D1] font-medium">
+              Select Child
+            </label>
             <select
               value={selectedChild}
               onChange={(e) => setSelectedChild(e.target.value)}
               className="w-full p-3 border border-gray-200 rounded-lg"
             >
               {children.length ? (
-                children.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
+                children.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))
               ) : (
                 <option>No children available</option>
               )}
@@ -313,7 +371,7 @@ export default function UploadDrawingPage() {
             </div>
           </div>
 
-          {/* PREVIEW */}
+          {/* PREVIEW + RENAME */}
           {preview && (
             <div className="mb-4">
               <img
@@ -321,6 +379,34 @@ export default function UploadDrawingPage() {
                 alt="Preview"
                 className="max-h-72 w-auto mx-auto rounded-xl shadow-sm"
               />
+
+              {/* Rename input */}
+              <div className="mt-4">
+                <label className="block text-[#3742D1] font-medium mb-2">
+                  File name
+                </label>
+                <div className="flex">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={fileBaseName}
+                      onChange={(e) =>
+                        setFileBaseName(sanitizeBase(e.target.value))
+                      }
+                      placeholder="e.g. Zoo Drawing"
+                      className="w-full p-3 pr-20 border border-[#809CFF] rounded-l-lg focus:outline-none focus:ring-2 focus:ring-[#3742D1]"
+                    />
+                    <RenameIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-[#3742D1]" />
+                  </div>
+                  <div className="px-3 py-3 border border-l-0 border-[#809CFF] rounded-r-lg bg-[#ECF1FF] text-gray-700">
+                    .{fileExt}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Allowed: letters, numbers, spaces, “-” and “_” (max 80 chars)
+                </p>
+              </div>
+
               <div className="flex justify-center gap-3 mt-3">
                 <button
                   onClick={clearSelection}
@@ -332,14 +418,18 @@ export default function UploadDrawingPage() {
                   onClick={handleUploadThenGoToAnalysis}
                   disabled={!canSubmit}
                   className={`px-5 py-2 rounded-full text-white font-medium flex items-center gap-2 ${
-                    canSubmit ? "bg-[#3742D1] hover:bg-[#2a36c7]" : "bg-[#9aa3ff] cursor-not-allowed"
+                    canSubmit
+                      ? "bg-[#3742D1] hover:bg-[#2a36c7]"
+                      : "bg-[#9aa3ff] cursor-not-allowed"
                   }`}
                 >
                   <UploadIcon fontSize="small" />
                   {isUploading ? "Uploading…" : "Upload & Continue"}
                 </button>
               </div>
-              {error && <p className="text-red-600 text-sm mt-3 text-center">{error}</p>}
+              {error && (
+                <p className="text-red-600 text-sm mt-3 text-center">{error}</p>
+              )}
             </div>
           )}
         </>
@@ -357,7 +447,9 @@ export default function UploadDrawingPage() {
               <CloseIcon className="text-gray-600" />
             </button>
 
-            <h2 className="text-lg font-semibold text-[#3742D1] mb-3">Camera</h2>
+            <h2 className="text-lg font-semibold text-[#3742D1] mb-3">
+              Camera
+            </h2>
 
             {cameraError ? (
               <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
@@ -400,9 +492,12 @@ export default function UploadDrawingPage() {
           <HomeIcon className="w-6 h-6 text-white" />
           <span className="text-xs text-white mt-1">Home</span>
         </button>
-        <button onClick={() => router.push("/drawings/upload")} className="flex flex-col items-center">
+        <button
+          onClick={() => router.push("/drawings/upload")}
+          className="flex flex-col items-center"
+        >
           <UploadIcon className="w-6 h-6 text-white" />
-        <span className="text-xs text-white mt-1">Upload</span>
+          <span className="text-xs text-white mt-1">Upload</span>
         </button>
         <button onClick={() => router.push("/account")} className="flex flex-col items-center">
           <AccountCircleIcon className="w-6 h-6 text-white" />
