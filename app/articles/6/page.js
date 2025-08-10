@@ -6,7 +6,7 @@ const article = {
   description: "Balancing screen-based and hands-on art experiences",
   category: "Development",
   readTime: "7 min",
-  image: "/images/digital-vs-traditional-art.jpg",
+  image: "/images/article6.jpg",
   createdAt: "2023-11-25T13:30:00Z",
   keywords: ["digital art", "traditional media", "technology balance"],
   content: [
