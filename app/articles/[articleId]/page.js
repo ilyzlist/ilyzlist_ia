@@ -1,42 +1,66 @@
 'use client';
 
 import { useMemo } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MdArrowBack, MdSearch, MdNotifications, MdSettings } from 'react-icons/md';
+import Link from 'next/link';
+import { MdArrowBack, MdSearch, MdNotifications, MdSettings, MdImage } from 'react-icons/md';
 
-// If you already import your articles from a data file, keep that import.
-// Here we assume you pass/find the article by ID like before.
+// Same data shape as Home (note the leading slash in image paths)
+const ARTICLES = [
+  {
+    id: 1,
+    category: 'Child Development',
+    readTime: '5 min read',
+    title: "Understanding Your Child's Drawing Stages",
+    image: '/images/article1.jpg',
+  },
+  {
+    id: 2,
+    category: 'Development',
+    readTime: '7 min read',
+    title: 'Developmental Stages of Drawing',
+    image: '/images/article2.jpg',
+  },
+  {
+    id: 3,
+    category: 'Psychology',
+    readTime: '6 min read',
+    title: "Decoding Colors in Children's Art",
+    image: '/images/article3.jpg',
+  },
+  {
+    id: 4,
+    category: 'Parenting',
+    readTime: '4 min read',
+    title: 'Encouraging Creativity at Home',
+    image: '/images/article4.jpg',
+  },
+  {
+    id: 5,
+    category: 'Education',
+    readTime: '8 min read',
+    title: 'Art-Based Learning Techniques',
+    image: '/images/article5.jpg',
+  },
+];
 
 function normalizeImagePath(src) {
   if (!src) return '/images/article-placeholder.jpg';
-  // allow absolute and /public paths; otherwise prefix with /images/
-  if (src.startsWith('http') || src.startsWith('/')) return src;
-  return `/images/${src}`;
+  return src.startsWith('/') ? src : `/images/${src}`;
 }
 
-export default function ArticleDetailPage({ params }) {
+export default function ArticlePage({ params }) {
   const router = useRouter();
   const id = Number(params.articleId);
-
-  // ⬇️ Replace this with however you fetch the article today
-  // (from local array, CMS, etc.). Keep object shape: { title, category, readTime, image, content... }
-  const article = useMemo(() => {
-    // example lookup you already had:
-    // return ARTICLES.find(a => a.id === id);
-    return null;
-  }, [id]);
+  const article = useMemo(() => ARTICLES.find(a => a.id === id), [id]);
 
   if (!article) {
     return (
       <div className="bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6">
-        <header className="flex items-center gap-4 mb-6">
-          <button onClick={() => router.back()} className="p-1">
-            <MdArrowBack className="w-5 h-5 text-[#3742D1]" />
-          </button>
-          <h1 className="text-xl font-bold text-[#3742D1]">Article</h1>
-        </header>
-        <p className="text-gray-600">Article not found.</p>
+        <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-100" aria-label="Go back">
+          <MdArrowBack className="text-[#3742D1] text-xl" />
+        </button>
+        <p className="mt-6 text-gray-700">Article not found.</p>
       </div>
     );
   }
@@ -64,48 +88,41 @@ export default function ArticleDetailPage({ params }) {
         </div>
       </header>
 
-      {/* Title/meta */}
-      <div className="mb-3">
-        <div className="flex items-center gap-2 text-xs text-[#3742D1]">
-          {article.category && (
-            <span className="px-2 py-1 bg-[#ECF1FF] rounded-full">{article.category}</span>
-          )}
+      {/* Hero */}
+      <div className="bg-[#ECF1FF] rounded-xl p-4 mb-4">
+        <div className="flex items-center gap-2 text-xs text-[#3742D1] mb-3">
+          {article.category && <span className="px-2 py-1 bg-white/60 rounded-full">{article.category}</span>}
           {article.readTime && <span>{article.readTime}</span>}
         </div>
-        <h2 className="text-2xl font-extrabold mt-2">{article.title}</h2>
+        <h2 className="text-xl font-bold text-gray-900">{article.title}</h2>
       </div>
 
-      {/* HERO IMAGE — plain <img> with robust fallback */}
-      <div className="w-full rounded-xl overflow-hidden bg-[#ECF1FF] aspect-[16/9] mb-6">
+      {/* Image */}
+      <div className="w-full bg-[#ECF1FF] rounded-xl overflow-hidden mb-6 flex items-center justify-center aspect-[16/9]">
         <img
           src={imgSrc}
           alt={article.title}
           className="w-full h-full object-cover"
           onError={(e) => {
+            e.currentTarget.onerror = null;
             e.currentTarget.src = '/images/article-placeholder.jpg';
           }}
-          // If you want to avoid CLS you can add width/height attributes that match your aspect ratio
         />
       </div>
 
-      {/* Content (keep your existing rich text) */}
+      {/* Body (placeholder copy; replace with your real content) */}
       <article className="prose prose-sm max-w-none">
-        {Array.isArray(article.paragraphs)
-          ? article.paragraphs.map((p, i) => <p key={i}>{p}</p>)
-          : <p>{article.content}</p>}
+        <p>
+          This is where the article content goes. You can replace this with your real copy or load it
+          from a CMS later.
+        </p>
       </article>
 
-      {/* Bottom Nav */}
+      {/* Bottom nav kept consistent with the rest of the app */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#3742D1] py-2 px-6 flex justify-around max-w-md mx-auto rounded-t-2xl shadow-lg">
-        <Link href="/" className="flex flex-col items-center text-white">
-          <span className="text-xs mt-1">Home</span>
-        </Link>
-        <Link href="/drawings/upload" className="flex flex-col items-center text-white">
-          <span className="text-xs mt-1">Upload</span>
-        </Link>
-        <Link href="/account" className="flex flex-col items-center text-white">
-          <span className="text-xs mt-1">Account</span>
-        </Link>
+        <Link href="/" className="flex flex-col items-center text-white"><span className="text-xs mt-1">Home</span></Link>
+        <Link href="/drawings/upload" className="flex flex-col items-center text-white"><span className="text-xs mt-1">Upload</span></Link>
+        <Link href="/account" className="flex flex-col items-center text-white"><span className="text-xs mt-1">Account</span></Link>
       </nav>
     </div>
   );
