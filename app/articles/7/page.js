@@ -6,7 +6,7 @@ const article = {
   description: "How to identify and nurture exceptional artistic ability",
   category: "Psychology",
   readTime: "8 min",
-  image: "/images/gifted-child-art.jpg",
+  image: "/images/article7.jpg",
   createdAt: "2023-12-01T15:00:00Z",
   keywords: ["artistic giftedness", "talent development", "creative children"],
   content: [
