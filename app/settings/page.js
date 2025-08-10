@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Head from 'next/head';
+import { supabase } from '@/utils/supabaseClient';
 import {
   Home as HomeIcon,
   Upload as UploadIcon,
@@ -34,26 +35,70 @@ const GreenSwitch = styled(Switch)(({ theme }) => ({
 
 export default function SettingsPage() {
   const router = useRouter();
+
+  // UI state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSection, setExpandedSection] = useState(null);
+
+  // Password form state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null); // { type: 'error'|'success', msg: string }
+
+  // Auth provider
+  const [isEmailPasswordUser, setIsEmailPasswordUser] = useState(false);
+
+  useEffect(() => {
+    // Figure out the user's auth provider
+    (async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (!user) return;
+      // Supabase sets app_metadata.provider to 'email' for email/password users, 'google' for Google, etc.
+      const provider = user.app_metadata?.provider;
+      setIsEmailPasswordUser(provider === 'email'); 
+    })();
+  }, []);
 
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
+    setFeedback(null);
   };
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
-    alert('Password change functionality will be implemented soon!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setExpandedSection(null);
+    setFeedback(null);
+
+    // Basic local validation (Supabase will also validate)
+    if (newPassword !== confirmPassword) {
+      setFeedback({ type: 'error', msg: 'New password and confirmation do not match.' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setFeedback({ type: 'error', msg: 'Password must be at least 8 characters.' });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      // For email/password users, you can update directly using the current session
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      setFeedback({ type: 'success', msg: 'Password updated successfully.' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setExpandedSection(null);
+    } catch (err) {
+      setFeedback({ type: 'error', msg: err.message || 'Failed to update password.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -122,69 +167,112 @@ export default function SettingsPage() {
             </p>
           </section>
 
-          <section className="bg-[#ECF1FF] rounded-xl shadow-sm">
-            <div className="p-4 cursor-pointer hover:bg-[#d9e1fa] transition-colors" onClick={() => toggleSection('security')}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <SecurityIcon className="text-[#3742D1] mr-3" />
-                  <span className="text-gray-800 font-medium font-league-spartan">
-                    Security
-                  </span>
+          {/* SECURITY — only for email/password users */}
+          {isEmailPasswordUser && (
+            <section className="bg-[#ECF1FF] rounded-xl shadow-sm">
+              <div
+                className="p-4 cursor-pointer hover:bg-[#d9e1fa] transition-colors"
+                onClick={() => toggleSection('security')}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <SecurityIcon className="text-[#3742D1] mr-3" />
+                    <span className="text-gray-800 font-medium font-league-spartan">
+                      Security
+                    </span>
+                  </div>
+                  {expandedSection === 'security' ? (
+                    <ExpandLessIcon className="text-[#3742D1]" />
+                  ) : (
+                    <ExpandMoreIcon className="text-[#3742D1]" />
+                  )}
                 </div>
-                {expandedSection === 'security' ? (
-                  <ExpandLessIcon className="text-[#3742D1]" />
-                ) : (
-                  <ExpandMoreIcon className="text-[#3742D1]" />
-                )}
+                <p className="text-sm text-gray-600 font-league-spartan mt-1">
+                  Change password and security settings
+                </p>
               </div>
-              <p className="text-sm text-gray-600 font-league-spartan mt-1">
-                Change password and security settings
-              </p>
-            </div>
 
-            {expandedSection === 'security' && (
-              <div className="px-4 pb-4">
-                <form onSubmit={handlePasswordChange}>
-                  {[['Current Password', currentPassword, setCurrentPassword], ['New Password', newPassword, setNewPassword], ['Confirm New Password', confirmPassword, setConfirmPassword]].map(([label, value, setter], i) => (
-                    <div key={i} className="mb-3 relative">
-                      <label className="block text-sm text-gray-600 mb-1">{label}</label>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={value}
-                        onChange={(e) => setter(e.target.value)}
-                        className="w-full p-3 bg-white rounded-lg border border-[#809CFF] focus:outline-none focus:ring-2 focus:ring-[#3742D1]"
-                        required
-                      />
+              {expandedSection === 'security' && (
+                <div className="px-4 pb-4">
+                  {feedback && (
+                    <div
+                      className={`mb-3 rounded-lg px-3 py-2 text-sm ${
+                        feedback.type === 'error'
+                          ? 'bg-red-50 text-red-700'
+                          : 'bg-green-50 text-green-700'
+                      }`}
+                    >
+                      {feedback.msg}
+                    </div>
+                  )}
+
+                  <form onSubmit={handlePasswordChange}>
+                    {[['Current Password', currentPassword, setCurrentPassword], ['New Password', newPassword, setNewPassword], ['Confirm New Password', confirmPassword, setConfirmPassword]].map(([label, value, setter], i) => (
+                      <div key={i} className="mb-3 relative">
+                        <label className="block text-sm text-gray-600 mb-1">{label}</label>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={value}
+                          onChange={(e) => setter(e.target.value)}
+                          className="w-full p-3 bg-white rounded-lg border border-[#809CFF] focus:outline-none focus:ring-2 focus:ring-[#3742D1]"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-9 text-[#3742D1]"
+                          tabIndex={-1}
+                          aria-label="Toggle password visibility"
+                        >
+                          {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        </button>
+                      </div>
+                    ))}
+
+                    <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-9 text-[#3742D1]"
-                        tabIndex={-1}
+                        onClick={() => setExpandedSection(null)}
+                        className="flex-1 py-2 bg-gray-300 text-gray-800 rounded-lg font-medium hover:bg-gray-400 transition-colors"
                       >
-                        {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex-1 py-2 bg-[#3742D1] text-white rounded-lg font-medium hover:bg-[#2a35b8] transition-colors disabled:opacity-60"
+                      >
+                        {saving ? 'Saving…' : 'Save'}
                       </button>
                     </div>
-                  ))}
+                  </form>
+                </div>
+              )}
+            </section>
+          )}
 
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedSection(null)}
-                      className="flex-1 py-2 bg-gray-300 text-gray-800 rounded-lg font-medium hover:bg-gray-400 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 py-2 bg-[#3742D1] text-white rounded-lg font-medium hover:bg-[#2a35b8] transition-colors"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </form>
+          {/* If NOT email/password, show a small info card so it’s clear */}
+          {!isEmailPasswordUser && (
+            <section className="bg-[#ECF1FF] rounded-xl p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <SecurityIcon className="text-[#3742D1] mt-1" />
+                <div>
+                  <h3 className="text-gray-800 font-medium font-league-spartan">Security</h3>
+                  <p className="text-sm text-gray-600">
+                    Your account uses Google sign-in. Password settings are not available.
+                  </p>
+                  <a
+                    href="https://myaccount.google.com/security"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block mt-3 px-4 py-2 rounded-full bg-[#3742D1] text-white text-sm hover:bg-[#2a35b8]"
+                  >
+                    Manage Google Account
+                  </a>
+                </div>
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
           <section className="bg-[#ECF1FF] rounded-xl shadow-sm">
             <div className="p-4 cursor-pointer hover:bg-[#d9e1fa] transition-colors" onClick={() => toggleSection('about')}>
