@@ -33,6 +33,10 @@ export default function UploadDrawingPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
 
+  // Editable file name (base) + extension
+  const [fileBaseName, setFileBaseName] = useState("");
+  const [fileExt, setFileExt] = useState("png");
+  
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState("");
