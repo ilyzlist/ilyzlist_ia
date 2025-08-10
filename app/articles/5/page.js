@@ -6,7 +6,7 @@ const article = {
   description: "How therapeutic art activities can help children process emotions",
   category: "Psychology",
   readTime: "9 min",
-  image: "/images/art-therapy-techniques.jpg",
+  image: "/images/article5.jpg",
   createdAt: "2023-11-20T10:10:00Z",
   keywords: ["art therapy", "emotional healing", "child counseling"],
   content: [
