@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabaseClient";
 
 import {
   Home as HomeIcon,
@@ -18,11 +18,6 @@ import {
   Settings as SettingsIcon,
   DeleteOutline as DeleteIcon,
 } from "@mui/icons-material";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 function relTime(ts) {
   try {
@@ -52,19 +47,19 @@ export default function NotificationsPage() {
 
   const channelsRef = useRef([]);
 
-  // Load user + notifications flag
+  // Load user + notifications flag (do not redirect to Home if empty)
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) {
+      const { data, error } = await supabase.auth.getUser();
+      const u = data?.user ?? null;
+      if (!u || error) {
         router.push("/login");
         return;
       }
       if (!isMounted) return;
       setUser(u);
 
-      // Try to read notifications_enabled from profiles; default true if not present.
       const { data: profile } = await supabase
         .from("profiles")
         .select("notifications_enabled")
@@ -77,17 +72,18 @@ export default function NotificationsPage() {
       }
     })();
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   // Subscribe to realtime events when enabled
   useEffect(() => {
     if (!user || !enabled) return;
 
-    // Ensure realtime is enabled for the tables in Supabase dashboard
     const chans = [];
 
-    // 1) drawings INSERT => "Drawing uploaded"
+    // drawings INSERT => "Drawing uploaded"
     chans.push(
       supabase
         .channel("rt-drawings")
@@ -108,7 +104,7 @@ export default function NotificationsPage() {
         .subscribe()
     );
 
-    // 2) children INSERT => "Child added"
+    // children INSERT => "Child added"
     chans.push(
       supabase
         .channel("rt-children")
@@ -129,8 +125,7 @@ export default function NotificationsPage() {
         .subscribe()
     );
 
-    // 3) analyses UPDATE => status becomes completed
-    // Adjust table/column names to your actual schema if needed.
+    // analyses UPDATE => status becomes completed
     chans.push(
       supabase
         .channel("rt-analyses")
@@ -140,7 +135,6 @@ export default function NotificationsPage() {
           (payload) => {
             const before = payload.old || {};
             const after = payload.new || {};
-            // Filter to this user if user_id exists on the row
             if (after.user_id && after.user_id !== user.id) return;
 
             if (before.status !== "completed" && after.status === "completed") {
@@ -161,11 +155,12 @@ export default function NotificationsPage() {
 
     return () => {
       channelsRef.current.forEach((c) => {
-        try { supabase.removeChannel(c); } catch {}
+        try {
+          supabase.removeChannel(c);
+        } catch {}
       });
       channelsRef.current = [];
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, enabled]);
 
   const addNotification = (n) => {
@@ -187,7 +182,6 @@ export default function NotificationsPage() {
   }, [notifications, searchQuery]);
 
   const handleNotificationClick = (n) => {
-    // remove it locally
     setNotifications((prev) => prev.filter((x) => x.id !== n.id));
     if (n.action) router.push(n.action);
   };
