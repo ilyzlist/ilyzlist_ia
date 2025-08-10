@@ -6,7 +6,7 @@ const article = {
   description: "Learn to interpret psychological meaning in children's drawings",
   category: "Psychology",
   readTime: "5 min",
-  image: "/images/child-drawing-analysis.jpg",
+  image: "/images/article1.jpg",
   createdAt: "2023-10-15T09:30:00Z",
   keywords: ["child psychology", "drawing interpretation", "emotional development"],
   content: [
