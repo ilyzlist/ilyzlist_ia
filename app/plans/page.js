@@ -176,7 +176,7 @@ export default function PlansPage() {
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          Prices shown are before tax. VAT/GST is calculated at checkout where applicable.
+          All prices are tax-inclusive; VAT/GST included where required.
         </p>
       </div>
 
