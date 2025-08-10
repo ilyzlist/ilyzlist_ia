@@ -25,7 +25,7 @@ function getOrigin(req) {
 
 export async function POST(req) {
   try {
-    const { userId, email, priceId, planId } = await req.json();
+    const { userId, email, priceId, planId, currency } = await req.json();
 
     if (!userId || !email || !priceId || !planId) {
       return new Response(
@@ -33,6 +33,13 @@ export async function POST(req) {
         { status: 400, headers: { 'content-type': 'application/json' } }
       );
     }
+
+    // Validate optional presentment currency (for multi-currency Prices)
+    const allowedCurrencies = new Set(['eur', 'usd', 'cad']);
+    const presentmentCurrencyRaw = (currency || '').toLowerCase();
+    const currencyParam = allowedCurrencies.has(presentmentCurrencyRaw)
+      ? { currency: presentmentCurrencyRaw }
+      : {}; // omit if not provided/unsupported -> Stripe auto-localizes
 
     const origin = getOrigin(req);
     const successUrl = `${origin}/plans/payment-confirmation?success=true&session_id={CHECKOUT_SESSION_ID}`;
@@ -53,7 +60,6 @@ export async function POST(req) {
       );
     }
 
-    // Use a different var name to avoid any redeclaration conflicts
     let resolvedCustomerId = profileData?.stripe_customer_id ?? null;
 
     if (!resolvedCustomerId) {
@@ -78,14 +84,16 @@ export async function POST(req) {
     const session = await stripe.checkout.sessions.create({
       customer: resolvedCustomerId,
       mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }], // your multi-currency Price
       allow_promotion_codes: true,
       success_url: successUrl,
       cancel_url: cancelUrl,
+      client_reference_id: userId,             // helps webhook tie back to your user
       metadata: { userId, planId },
       subscription_data: {
         metadata: { userId, planId },
       },
+      ...currencyParam,                         // force EUR/USD/CAD if provided
     });
 
     return new Response(
