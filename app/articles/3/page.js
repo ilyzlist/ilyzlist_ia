@@ -6,7 +6,7 @@ const article = {
   description: "What color choices reveal about a child's emotions and personality",
   category: "Psychology",
   readTime: "6 min",
-  image: "/images/color-psychology-children.jpg",
+  image: "/images/article3.jpg",
   createdAt: "2023-11-05T11:20:00Z",
   keywords: ["color meaning", "emotional expression", "art therapy"],
   content: [
