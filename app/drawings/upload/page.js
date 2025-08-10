@@ -16,6 +16,10 @@ import {
   Close as CloseIcon,
 } from "@mui/icons-material";
 
+// 👇 set your bucket here (env first, fallback to 'drawings')
+const BUCKET =
+  process.env.NEXT_PUBLIC_SUPABASE_DRAWINGS_BUCKET?.trim() || "drawings";
+
 export default function UploadDrawingPage() {
   const router = useRouter();
 
@@ -86,7 +90,6 @@ export default function UploadDrawingPage() {
     setCameraError("");
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
-        // Fallback to system picker on very old browsers
         document.getElementById("pick-camera-fallback")?.click();
         return;
       }
@@ -96,7 +99,6 @@ export default function UploadDrawingPage() {
       });
       streamRef.current = stream;
       setShowCamera(true);
-      // small delay so video element is mounted
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -106,7 +108,7 @@ export default function UploadDrawingPage() {
     } catch (err) {
       console.error("Camera error:", err);
       setCameraError(
-        "Could not access the camera. Please allow camera permission or use the device picker below."
+        "Could not access the camera. Please allow permission or use the device picker."
       );
     }
   };
@@ -168,13 +170,21 @@ export default function UploadDrawingPage() {
 
       const { error: upErr } = await supabase
         .storage
-        .from("drawings")
+        .from(BUCKET) // 👈 use configured bucket
         .upload(path, file, {
           contentType: file.type || "image/png",
           upsert: false,
         });
 
-      if (upErr) throw upErr;
+      if (upErr) {
+        // Friendlier message for the common case
+        if (String(upErr.message || "").toLowerCase().includes("bucket not found")) {
+          throw new Error(
+            `Bucket "${BUCKET}" not found. Set NEXT_PUBLIC_SUPABASE_DRAWINGS_BUCKET to your real bucket name (e.g., "drawings-bucket").`
+          );
+        }
+        throw upErr;
+      }
 
       const { data: row, error: insErr } = await supabase
         .from("drawings")
@@ -287,7 +297,7 @@ export default function UploadDrawingPage() {
                 Open camera
               </button>
 
-              {/* Fallback: system camera/file picker (for very old browsers) */}
+              {/* Fallback: system camera/file picker */}
               <input
                 type="file"
                 id="pick-camera-fallback"
@@ -388,7 +398,7 @@ export default function UploadDrawingPage() {
         </button>
         <button onClick={() => router.push("/drawings/upload")} className="flex flex-col items-center">
           <UploadIcon className="w-6 h-6 text-white" />
-          <span className="text-xs text-white mt-1">Upload</span>
+        <span className="text-xs text-white mt-1">Upload</span>
         </button>
         <button onClick={() => router.push("/account")} className="flex flex-col items-center">
           <AccountCircleIcon className="w-6 h-6 text-white" />
