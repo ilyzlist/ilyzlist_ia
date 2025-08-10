@@ -1,41 +1,46 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabaseClient';
-import Head from 'next/head';
 import {
   MdHome, MdUpload, MdAccountCircle, MdEdit, MdPerson, MdPayment,
   MdPrivacyTip, MdHelp, MdLogout, MdArrowBack, MdSearch, MdSettings, MdChildCare
 } from 'react-icons/md';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-const planLabel = (p) => {
-  if (p === 'basic') return 'Basic Plan';
-  if (p === 'premium') return 'Premium Plan';
-  return 'Free Plan';
-};
-const accountLabel = (p) => {
-  if (p === 'basic') return 'Basic Account';
-  if (p === 'premium') return 'Premium Account';
-  return 'Free Account';
-};
+const planLabel = (p) => (p === 'basic' ? 'Basic Plan' : p === 'premium' ? 'Premium Plan' : 'Free Plan');
+const accountLabel = (p) => (p === 'basic' ? 'Basic Account' : p === 'premium' ? 'Premium Account' : 'Free Account');
+const ACTIVE_STATUSES = ['active', 'trialing', 'past_due']; // show as paid if Stripe still considers it active-ish
 
 export default function AccountScreen() {
   const router = useRouter();
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [email, setEmail] = useState('');
-  const [tempEmail, setTempEmail] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // profile state
-  const [currentPlan, setCurrentPlan] = useState('free');
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [tempEmail, setTempEmail] = useState('');
+
+  // profile
+  const [profilePlan, setProfilePlan] = useState('free');
   const [stripeCustomerId, setStripeCustomerId] = useState(null);
 
+  // subscription snapshot
+  const [subPlan, setSubPlan] = useState(null);
+  const [subStatus, setSubStatus] = useState(null);
+
+  const effectivePlan = useMemo(() => {
+    if (subPlan && subStatus && ACTIVE_STATUSES.includes(subStatus)) {
+      return subPlan || 'free';
+    }
+    return profilePlan || 'free';
+  }, [profilePlan, subPlan, subStatus]);
+
   useEffect(() => {
-    const fetchData = async () => {
+    const run = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error || !user) {
@@ -46,34 +51,64 @@ export default function AccountScreen() {
         setEmail(user.email || '');
         setTempEmail(user.email || '');
 
-        // load profile (plan + customer id)
-        const { data: profile, error: pErr } = await supabase
+        // 1) load profile
+        const { data: profile } = await supabase
           .from('profiles')
           .select('current_plan, stripe_customer_id')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (!pErr && profile) {
-          setCurrentPlan(profile.current_plan || 'free');
-          setStripeCustomerId(profile.stripe_customer_id || null);
+        setProfilePlan(profile?.current_plan || 'free');
+        setStripeCustomerId(profile?.stripe_customer_id || null);
+
+        // 2) load latest subscription for this user (if RLS allows it)
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('plan_type, status, updated_at')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (sub) {
+          setSubPlan(sub.plan_type || null);
+          setSubStatus(sub.status || null);
         }
-      } catch (e) {
-        console.error('Error loading account:', e);
-        router.push('/login');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchData();
+    run();
   }, [router]);
+
+  // Realtime updates: if webhook updates either table, reflect instantly
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase.channel('account-live')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        (payload) => {
+          setProfilePlan(payload.new?.current_plan || 'free');
+          setStripeCustomerId(payload.new?.stripe_customer_id || null);
+        })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const row = payload.new || payload.old;
+          if (!row) return;
+          setSubPlan(row.plan_type || null);
+          setSubStatus(row.status || null);
+        })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   const handleEditEmail = () => {
     if (isEditingEmail) {
       setEmail(tempEmail);
-      // TODO: supabase.auth.updateUser({ email: tempEmail });
+      // TODO(optional): await supabase.auth.updateUser({ email: tempEmail });
     }
-    setIsEditingEmail(!isEditingEmail);
+    setIsEditingEmail((v) => !v);
   };
 
   const handleLogout = async () => {
@@ -81,42 +116,31 @@ export default function AccountScreen() {
     try {
       await supabase.auth.signOut();
       router.push('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
     } finally {
       setIsLoggingOut(false);
     }
   };
 
   const handleUploadDrawing = () => router.push('/drawings/upload');
-
   const navigateToChildrenProfiles = () => router.push('/children-profiles');
 
   const handleSubscriptionClick = async () => {
-    // Free → go to plans (upgrade)
-    if (currentPlan === 'free' || !stripeCustomerId) {
+    // Free / no customer → go to plans to upgrade
+    if (effectivePlan === 'free' || !stripeCustomerId) {
       router.push('/plans');
       return;
     }
-    // Paid → open Stripe customer portal
+    // Paid → open Stripe billing portal
     try {
       const res = await fetch('/api/stripe/create-portal-session', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          returnUrl: `${window.location.origin}/account`,
-        }),
+        body: JSON.stringify({ userId: user.id, returnUrl: `${window.location.origin}/account` }),
       });
       const data = await res.json();
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        // Fallback to plans if portal fails
-        router.push('/plans');
-      }
-    } catch (e) {
-      console.error('Portal error:', e);
+      if (data?.url) window.location.href = data.url;
+      else router.push('/plans');
+    } catch {
       router.push('/plans');
     }
   };
@@ -159,18 +183,16 @@ export default function AccountScreen() {
           <div className="w-16 h-16 rounded-full bg-[#3742D1] flex items-center justify-center text-white text-2xl">
             {user.email?.charAt(0).toUpperCase() || 'U'}
           </div>
-          <div>
+        <div>
             <h2 className="text-lg font-bold">{user.email}</h2>
-            <p className="text-sm text-gray-500">{accountLabel(currentPlan)}</p>
+            <p className="text-sm text-gray-500">{accountLabel(effectivePlan)}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           {/* Children Profiles */}
-          <button
-            onClick={navigateToChildrenProfiles}
-            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]"
-          >
+          <button onClick={navigateToChildrenProfiles}
+            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]">
             <div className="flex items-center gap-3">
               <MdChildCare className="text-[#3742D1]" />
               <span>Children Profiles</span>
@@ -203,22 +225,18 @@ export default function AccountScreen() {
           </div>
 
           {/* Subscription */}
-          <button
-            onClick={handleSubscriptionClick}
-            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]"
-          >
+          <button onClick={handleSubscriptionClick}
+            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]">
             <div className="flex items-center gap-3">
               <MdPayment className="text-[#3742D1]" />
               <span>Subscription</span>
             </div>
-            <span className="text-sm text-gray-500">{planLabel(currentPlan)}</span>
+            <span className="text-sm text-gray-500">{planLabel(effectivePlan)}</span>
           </button>
 
           {/* Privacy */}
-          <button
-            onClick={() => router.push('/privacy-policy')}
-            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]"
-          >
+          <button onClick={() => router.push('/privacy-policy')}
+            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]">
             <div className="flex items-center gap-3">
               <MdPrivacyTip className="text-[#3742D1]" />
               <span>Privacy</span>
@@ -226,10 +244,8 @@ export default function AccountScreen() {
           </button>
 
           {/* Help */}
-          <button
-            onClick={() => router.push('/help-center')}
-            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]"
-          >
+          <button onClick={() => router.push('/help-center')}
+            className="w-full flex justify-between items-center p-3 border-b border-[#ECF1FF] hover:bg-[#ECF1FF]">
             <div className="flex items-center gap-3">
               <MdHelp className="text-[#3742D1]" />
               <span>Help & Support</span>
@@ -239,10 +255,7 @@ export default function AccountScreen() {
       </section>
 
       {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="w-full py-3 px-4 flex items-center gap-3 text-red-500 hover:bg-red-50 rounded-lg"
-      >
+      <button onClick={handleLogout} className="w-full py-3 px-4 flex items-center gap-3 text-red-500 hover:bg-red-50 rounded-lg">
         <MdLogout className="text-red-500" />
         <span>Log Out</span>
       </button>
