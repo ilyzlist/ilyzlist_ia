@@ -1,30 +1,33 @@
 'use client';
 
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MdArrowBack, MdSearch, MdNotifications, MdSettings } from 'react-icons/md';
 
 const ARTICLES = [
   { id: 1, category: 'Child Development', readTime: '5 min read', title: "Understanding Your Child's Drawing Stages", image: '/images/article1.jpg' },
   { id: 2, category: 'Development',        readTime: '7 min read', title: 'Developmental Stages of Drawing',        image: '/images/article2.jpg' },
-  { id: 3, category: 'Psychology',         readTime: '6 min read', title: "Decoding Colors in Children's Art",      image: '/images/article3.jpg' },
-  { id: 4, category: 'Parenting',          readTime: '4 min read', title: 'Encouraging Creativity at Home',         image: '/images/article4.jpg' },
+  { id: 3, category: 'Psychology',         readTime: '6 min read', title: "Decoding Colors in Children\'s Art",     image: '/images/article3.jpg' },
+  { id: 4, category: 'Development',        readTime: '8 min read', title: 'Encouraging Creative Expression',        image: '/images/article4.jpg' },
   { id: 5, category: 'Education',          readTime: '8 min read', title: 'Art-Based Learning Techniques',          image: '/images/article5.jpg' },
 ];
 
-// Ensure absolute path under /public/images
+// ensure we always point inside /public/images and strip any stray spaces
 function toPublicImage(src) {
-  if (!src) return '/images/article-placeholder.jpg';
-  const s = src.replace(/^https?:\/\/[^/]+/i, '');
-  if (s.startsWith('/images/')) return s;
-  if (s.startsWith('images/')) return `/${s}`;
-  return `/images/${s.split('/').pop()}`;
+  const clean = (src ?? '').trim();
+  if (!clean) return '/images/article-placeholder.jpg';
+  // remove domain if someone pasted a full URL
+  const local = clean.replace(/^https?:\/\/[^/]+/i, '');
+  if (local.startsWith('/images/')) return local;
+  if (local.startsWith('images/')) return `/${local}`;
+  // last segment + force /images
+  return `/images/${local.split('/').pop()}`;
 }
 
 export default function ArticlePage({ params }) {
   const router = useRouter();
-  const id = Number(params.articleId); // <-- use articleId here
+  const id = Number(params.articleId); // <-- match your folder name
   const article = useMemo(() => ARTICLES.find(a => a.id === id), [id]);
 
   if (!article) {
@@ -38,7 +41,10 @@ export default function ArticlePage({ params }) {
     );
   }
 
-  const imgSrc = toPublicImage(article.image);
+  const computed = toPublicImage(article.image);
+  const [src, setSrc] = useState(computed);
+
+  useEffect(() => setSrc(computed), [computed]);
 
   return (
     <div className="bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-20">
@@ -64,10 +70,13 @@ export default function ArticlePage({ params }) {
 
       <div className="w-full bg-[#ECF1FF] rounded-xl overflow-hidden mb-6 flex items-center justify-center aspect-[16/9]">
         <img
-          src={imgSrc}
+          src={src}
           alt={article.title}
+          width={1280}
+          height={720}
+          loading="eager"
           className="w-full h-full object-cover"
-          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/images/article-placeholder.jpg'; }}
+          onError={() => setSrc('/images/article-placeholder.jpg')}
         />
       </div>
 
