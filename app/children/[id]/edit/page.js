@@ -24,12 +24,12 @@ export default function EditChildPage() {
       try {
         setLoading(true);
         if (!id) {
-          throw new Error("Aucun ID d'enfant fourni");
+          throw new Error("No child ID provided");
         }
 
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
-          throw new Error("Non authentifié");
+          throw new Error("Not authenticated");
         }
 
         const { data: child, error } = await supabase
@@ -41,11 +41,11 @@ export default function EditChildPage() {
 
         if (error) {
           console.error("[SUPABASE ERROR]", error);
-          throw new Error("Erreur de base de données");
+          throw new Error("Database error");
         }
 
         if (!child) {
-          throw new Error("Profil enfant non trouvé");
+          throw new Error("Child profile not found");
         }
 
         setFormData({
@@ -56,7 +56,7 @@ export default function EditChildPage() {
 
       } catch (err) {
         console.error("[FETCH ERROR]", err);
-        toast.error(err.message || "Échec du chargement");
+        toast.error(err.message || "Failed to load");
         router.push("/children-profiles");
       } finally {
         setLoading(false);
@@ -64,7 +64,7 @@ export default function EditChildPage() {
     };
 
     fetchChildData();
-  }, [id]);
+  }, [id]); // keep same deps as before for consistency
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -77,9 +77,9 @@ export default function EditChildPage() {
 
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) throw new Error("Non authentifié");
+      if (authError || !user) throw new Error("Not authenticated");
 
-      if (!formData.name.trim()) throw new Error("Le nom est requis");
+      if (!formData.name.trim()) throw new Error("Name is required");
 
       const { error } = await supabase
         .from("children")
@@ -94,33 +94,37 @@ export default function EditChildPage() {
 
       if (error) throw error;
 
-      toast.success("Profil mis à jour avec succès");
+      toast.success("Profile updated successfully");
       router.push("/children-profiles");
     } catch (err) {
       console.error("[UPDATE ERROR]", err);
-      toast.error(err.message || "Échec de la mise à jour");
+      toast.error(err.message || "Update failed");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce profil ? Cette action est irréversible.")) return;
+    if (!confirm("Are you sure you want to delete this profile? This action cannot be undone.")) return;
 
     setIsDeleting(true);
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Not authenticated");
+
       const { error } = await supabase
         .from("children")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
-      toast.success("Profil supprimé avec succès");
+      toast.success("Profile deleted successfully");
       router.push("/children-profiles");
     } catch (err) {
       console.error("[DELETE ERROR]", err);
-      toast.error(err.message || "Échec de la suppression");
+      toast.error(err.message || "Delete failed");
     } finally {
       setIsDeleting(false);
     }
@@ -137,7 +141,7 @@ export default function EditChildPage() {
   return (
     <>
       <Head>
-        <title>Modifier le profil | Ilyzlist</title>
+        <title>Edit Profile | Ilyzlist</title>
       </Head>
 
       <div className="bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-24">
@@ -145,17 +149,17 @@ export default function EditChildPage() {
           <button
             onClick={() => router.back()}
             className="p-2 rounded-full hover:bg-[#ECF1FF] transition-colors"
-            aria-label="Retour"
+            aria-label="Back"
           >
             <ArrowBack className="text-[#3742D1]" />
           </button>
-          <h1 className="text-2xl font-bold text-[#3742D1]">Modifier le profil</h1>
+          <h1 className="text-2xl font-bold text-[#3742D1]">Edit Profile</h1>
           <div className="w-10"></div>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="block text-lg font-medium">Nom complet</label>
+            <label className="block text-lg font-medium">Full Name</label>
             <div className="bg-[#ECF1FF] rounded-xl p-4">
               <input
                 type="text"
@@ -169,7 +173,7 @@ export default function EditChildPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-lg font-medium">Sexe</label>
+            <label className="block text-lg font-medium">Gender</label>
             <div className="bg-[#ECF1FF] rounded-xl p-4">
               <select
                 name="gender"
@@ -177,16 +181,16 @@ export default function EditChildPage() {
                 onChange={handleChange}
                 className="w-full bg-transparent text-[#809CFF] focus:outline-none border-none appearance-none"
               >
-                <option value="">Sélectionner</option>
-                <option value="male">Masculin</option>
-                <option value="female">Féminin</option>
-                <option value="other">Autre</option>
+                <option value="">Select</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
               </select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-lg font-medium">Date de naissance</label>
+            <label className="block text-lg font-medium">Date of Birth</label>
             <div className="bg-[#ECF1FF] rounded-xl p-4">
               <input
                 type="date"
@@ -208,7 +212,7 @@ export default function EditChildPage() {
                   : "bg-[#3742D1] text-white hover:bg-[#2a35b8]"
               }`}
             >
-              {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+              {isSubmitting ? "Saving..." : "Save"}
             </button>
 
             <button
@@ -222,7 +226,7 @@ export default function EditChildPage() {
               }`}
             >
               <Delete />
-              {isDeleting ? "Suppression..." : "Supprimer le profil"}
+              {isDeleting ? "Deleting..." : "Delete Profile"}
             </button>
           </div>
         </form>
@@ -230,7 +234,7 @@ export default function EditChildPage() {
         <nav className="fixed bottom-0 left-0 right-0 bg-[#3742D1] py-2 px-6 flex justify-around max-w-md mx-auto rounded-t-2xl shadow-lg">
           <button onClick={() => router.push("/")} className="p-2 flex flex-col items-center">
             <Home className="w-6 h-6 text-white" />
-            <span className="text-white text-xs">Accueil</span>
+            <span className="text-white text-xs">Home</span>
           </button>
           <button onClick={() => router.push("/drawings/upload")} className="p-2 flex flex-col items-center">
             <Upload className="w-6 h-6 text-white" />
@@ -238,7 +242,7 @@ export default function EditChildPage() {
           </button>
           <button onClick={() => router.push("/account")} className="p-2 flex flex-col items-center">
             <AccountCircle className="w-6 h-6 text-white" />
-            <span className="text-white text-xs">Compte</span>
+            <span className="text-white text-xs">Account</span>
           </button>
         </nav>
       </div>
