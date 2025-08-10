@@ -6,7 +6,7 @@ const article = {
   description: "Practical strategies to nurture your child's artistic development",
   category: "Development",
   readTime: "8 min",
-  image: "/images/creative-expression-kids.jpg",
+  image: "/images/article4.jpg",
   createdAt: "2023-11-12T16:45:00Z",
   keywords: ["creativity", "art education", "child development"],
   content: [
