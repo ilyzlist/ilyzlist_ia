@@ -6,7 +6,7 @@ const article = {
   description: "Using creative expression to understand non-verbal children",
   category: "Psychology",
   readTime: "6 min",
-  image: "/images/non-verbal-communication.jpg",
+  image: "/images/article8.jpg",
   createdAt: "2023-12-05T11:45:00Z",
   keywords: ["non-verbal", "art communication", "special needs"],
   content: [
