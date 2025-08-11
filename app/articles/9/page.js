@@ -6,7 +6,7 @@ const article = {
   description: 'What typical drawing milestones look like from scribbles to scenes.',
   category: 'Development',
   readTime: '7 min',
-  image: '/images/article9.jpg",
+  image: "/images/article9.jpg",
   createdAt: '2024-09-12T10:00:00Z',
   keywords: ['milestones', 'fine motor skills', 'ages and stages'],
   content: [
