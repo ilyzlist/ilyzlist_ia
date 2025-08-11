@@ -5,48 +5,63 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function analyzeDrawing({ signedUrl, childName, childAge }) {
   const name = childName || "the child";
-  const age = childAge ? `${childAge}` : "unknown";
+  const age = Number.isFinite(+childAge) ? String(childAge) : "unknown";
 
-  const messages = [
-    {
-      role: "system",
-      content: [
-        "You are a child-development specialist writing for caring parents.",
-        "Write with warmth and specificity. Avoid generic filler.",
-        "Ground claims in what could plausibly be seen in a child's drawing.",
-        "Use varied language and concrete observations.",
-        "Never diagnose. Offer gentle, practical suggestions.",
-      ].join(" "),
-    },
-    {
-      role: "user",
-      content: [
-        `Analyze this child's drawing for a parent. Child age: ${age}. Name: ${name}.`,
-        "When possible, infer *from the image* (composition, color choices, pressure, figures, spacing, symbols).",
-        "Return strict JSON only with these keys:",
-        `{
-  "summary": "2–3 sentences (40–70 words) that capture the overall mood and standout features.",
-  "emotional": "120–180 words. Emotional themes with 2–3 specific observations tied to elements in the picture. Vary verbs and adjectives; avoid repeating 'suggests' and 'may indicate'.",
-  "cognitive": "120–180 words. What skills are visible (planning, sequencing, perspective, proportion, detail). Map observations to approximate developmental expectations for age ${age}.",
-  "creative": "120–180 words. Imagination, symbolism, color/story choices, originality. Mention any risks taken or playful surprises.",
-  "recommendations": "120–180 words. 4–6 practical, upbeat actions the parent can try this week. Blend home activities, conversation starters, and gentle scaffolds.",
-  "flags": "30–80 words. Non-diagnostic watchouts phrased as neutral observations with what to monitor over time. If none, write 'None noted for now.'",
+  // --- SYSTEM STYLE GUARDRAILS ---
+  const systemText = [
+    "You are a child-development specialist and art therapist writing to caring parents.",
+    "Sound warm, precise, and evidence-based. Tie every claim to something visible in the drawing (layout, colors, pressure, figures, spacing, symbols, repetition, overlaps).",
+    "Vary verbs and adjectives; avoid hedging clichés like “may indicate”, “could suggest”, “it seems that”. Prefer fresher wording (signals, points to, aligns with, reads as).",
+    "Never diagnose. Offer gentle, practical, age-appropriate ideas. No medical labels. No moral judgments.",
+    "Write so a parent learns something new, feels reassured, and wants to keep exploring art together."
+  ].join(" ");
+
+  // --- JSON SPEC (kept compatible with your UI sections) ---
+  const spec = `Return STRICT JSON with keys exactly:
+{
+  "summary": "2–3 sentences (40–80 words) describing overall mood and standout features.",
+  "emotional": "140–190 words. Emotional themes grounded in 3–4 concrete observations (e.g., color warmth, figure spacing, facial cues, safe-base symbols). No filler.",
+  "cognitive": "140–190 words. Planning, sequencing, spatial reasoning, perspective, proportion, detail. Map to expectations for age ${age}. Use specific evidence.",
+  "creative": "140–190 words. Imagination, symbolism, story choices, risks taken, playful surprises. Cite exact elements.",
+  "recommendations": "140–190 words. 4–6 upbeat, do-this-now ideas (home activities, prompts, scaffolds). Write as one paragraph with mini-bullets using •.",
+  "flags": "40–90 words. Neutral watchouts to monitor over time and what to note. If none, write: 'None noted for now.'",
   "confidence": "high | medium | low"
-}`,
-        "Forbidden phrases: 'this may indicate', 'it seems that', 'could suggest' (use fresher wording).",
-        "Keep tone kind and curious.",
-        `Image URL:\n${signedUrl || "N/A"}`,
-      ].join("\n"),
-    },
+}`;
+
+  // --- USER MESSAGE PARTS (vision + instructions) ---
+  const userParts = [
+    {
+      type: "text",
+      text: [
+        `Analyze this child's drawing for a parent. Child: ${name}; Age: ${age}.`,
+        "Use second person sparingly (“you can…”) and keep a kind, curious tone.",
+        "Favor concrete references over abstractions. If the photo is unclear on a detail, avoid inventing specific content.",
+        spec,
+        "Formatting rules:",
+        "- No markdown; values are plain strings.",
+        "- Do not include extra keys.",
+        "- Do not wrap JSON in code fences."
+      ].join("\n")
+    }
   ];
+
+  if (signedUrl) {
+    userParts.push({
+      type: "image_url",
+      image_url: { url: signedUrl }
+    });
+  }
 
   const resp = await client.chat.completions.create({
     model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    temperature: 0.7,
-    max_tokens: 900,
-    messages,
+    temperature: 0.8,
+    max_tokens: 1700,
+    response_format: { type: "json_object" }, // enforce valid JSON
+    messages: [
+      { role: "system", content: systemText },
+      { role: "user", content: userParts }
+    ]
   });
 
-  // Return raw text; the API route will parse/normalize.
   return resp.choices?.[0]?.message?.content || "";
 }
