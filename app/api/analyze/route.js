@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { OpenAI } from "openai";
 import { createClient } from "@supabase/supabase-js";
-import { parseAnalysis } from "@/utils/parseAnalysis"; // JSON-based parser
+import { parseAnalysis } from "@/utils/parseAnalysis";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -21,85 +21,110 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // If an analysis already exists, return it
+    // 1) Return cached analysis if present
     const { data: existing, error: exErr } = await supabase
       .from("drawings")
       .select("analysis_result")
       .eq("id", drawingId)
       .single();
     if (exErr) throw exErr;
-
     if (existing?.analysis_result) {
       return NextResponse.json({ analysis: existing.analysis_result, metadata: { fromCache: true } });
     }
 
-    // Check quota
-    const { data: user, error: uErr } = await supabase
+    // 2) Check analysis quota
+    const { data: profile, error: pErr } = await supabase
       .from("profiles")
       .select("analysis_quota")
       .eq("id", userId)
       .single();
-    if (uErr) throw uErr;
-
-    if (!user || (typeof user.analysis_quota === "number" && user.analysis_quota <= 0)) {
+    if (pErr) throw pErr;
+    if (typeof profile?.analysis_quota === "number" && profile.analysis_quota <= 0) {
       return NextResponse.json({ error: "Quota exceeded" }, { status: 403 });
     }
 
-    // Stronger prompt + strict JSON format
+    const ageStr = Number.isFinite(+childAge) ? String(childAge) : "unknown";
+
+    // 3) Prompt: rich, specific, and JSON-only
     const systemText = [
       "You are a child-development specialist and art therapist writing to caring parents.",
-      "Write warmly and precisely. Tie each claim to something visible (layout, spacing, color temperature, pressure, posture, repetition, overlap, perspective).",
-      "No diagnoses. Avoid boring hedges like 'may indicate', 'could suggest', 'it seems'. Prefer: signals, aligns with, reads as, points to.",
-      "Each section must meet the word range. If short, add more concrete observations. Vary verbs/adjectives."
+      "Write warmly and vividly. Tie each insight to what’s visible (layout, spacing, color warmth, pressure, posture, repetition, overlap, perspective, proportions, narrative clues).",
+      "No diagnoses. Avoid dull hedges like 'may indicate'/'could suggest'. Prefer: points to, aligns with, reads as, signals.",
+      "Obey word ranges. Vary verbs/adjectives. Avoid repetition."
     ].join(" ");
 
-    const spec = `Return STRICT JSON with keys exactly:
+    const schema = `Return STRICT JSON with these keys:
 {
-  "summary": "2–3 sentences (40–80 words) describing overall mood and standout features.",
-  "emotional": "150–200 words with 3–4 concrete observations (e.g., color warmth, spacing, facial cues, safe-base symbols).",
-  "cognitive": "150–200 words on planning, sequencing, spatial reasoning, perspective, proportion, detail — mapped to expectations for age ${Number.isFinite(+childAge) ? childAge : "unknown"}.",
-  "creative": "150–200 words on imagination, symbolism/story choices, risks taken; cite exact elements.",
-  "recommendations": "150–200 words. 4–6 upbeat, do-this-now ideas (home activities, prompts, scaffolds). Write as one paragraph using mini-bullets like •.",
-  "flags": "40–90 words. Neutral watchouts to monitor over time and what to note. If none, write 'None noted for now.'",
+  "summary": "2–3 sentences (40–80 words).",
+  "emotional": "150–200 words with 3–4 concrete observations tied to the picture.",
+  "cognitive": "150–200 words on planning, sequencing, spatial reasoning, perspective, proportion, and detail—mapped to expectations for age ${ageStr}.",
+  "creative": "150–200 words on imagination, symbolism, story choices, risks taken (cite exact elements).",
+  "recommendations": "150–200 words. Include 4–6 actionable ideas written inline using dots like •, not numbered list.",
+  "flags": "40–90 words. Neutral watchouts with what to monitor. If none, 'None noted for now.'",
   "confidence": "high | medium | low"
 }`;
 
-    const response = await openai.chat.completions.create({
+    // Primary call: force JSON
+    const primary = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       temperature: 0.85,
-      max_tokens: 2400,                 // ⬅️ give it room to write
-      response_format: { type: "json_object" }, // ⬅️ force valid JSON
+      max_tokens: 2400,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemText },
         {
           role: "user",
           content: [
-            { type: "text", text: `Analyze this child's drawing. Age: ${childAge ?? "unknown"}.\n${spec}\nRules: Output JSON only (no markdown, no extra commentary).` },
-            { type: "image_url", image_url: { url: imageUrl } }
+            { type: "text", text: `Analyze this child's drawing (age: ${ageStr}). ${schema}\nOutput JSON ONLY (no markdown).` },
+            { type: "image_url", image_url: { url: imageUrl, detail: "high" } }
           ]
         }
       ]
     });
 
-    const rawJson = response.choices?.[0]?.message?.content;
-    if (!rawJson) throw new Error("No analysis content from model");
+    let raw = primary.choices?.[0]?.message?.content || "";
 
-    const parsed = parseAnalysis(rawJson); // keeps full text, no trimming
+    // 4) Parse; if short/empty, repair once with a secondary call
+    let parsed = parseAnalysis(raw);
 
-    // Save result
+    const tooShort =
+      (!parsed.summary || parsed.summary.length < 40) ||
+      !parsed.emotional?.analysis ||
+      !parsed.cognitive?.analysis ||
+      !parsed.creative?.analysis ||
+      (parsed.recommendations?.actions?.length ?? 0) < 4;
+
+    if (tooShort) {
+      const repair = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        temperature: 0.6,
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "You fix and expand JSON analyses to match the required schema and word ranges." },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `Here is the previous output (which was empty/short). Expand and repair to match the schema exactly.\n\n---\n${raw}\n\nSchema:\n${schema}` }
+            ]
+          }
+        ]
+      });
+      raw = repair.choices?.[0]?.message?.content || raw;
+      parsed = parseAnalysis(raw);
+    }
+
+    // 5) Save & decrement quota
     const { error: saveErr } = await supabase
       .from("drawings")
-      .update({
-        analysis_result: parsed,
-        analyzed_at: new Date().toISOString()
-      })
+      .update({ analysis_result: parsed, analyzed_at: new Date().toISOString() })
       .eq("id", drawingId);
     if (saveErr) throw saveErr;
 
-    // Decrement quota (if numeric)
-    if (typeof user.analysis_quota === "number") {
-      await supabase.from("profiles")
-        .update({ analysis_quota: Math.max(0, user.analysis_quota - 1) })
+    if (typeof profile?.analysis_quota === "number") {
+      await supabase
+        .from("profiles")
+        .update({ analysis_quota: Math.max(0, profile.analysis_quota - 1) })
         .eq("id", userId);
     }
 
