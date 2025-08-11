@@ -1,67 +1,65 @@
 // utils/parseAnalysis.js
-
-export function parseAnalysis(content) {
-  const sections = {
-    emotional: { analysis: '' },
-    cognitive: { analysis: '' },
-    creative: { analysis: '' },
-    recommendations: { actions: [] },
+export function parseAnalysis(input) {
+  const result = {
+    summary: "",
+    emotional: { analysis: "" },
+    cognitive: { analysis: "" },
+    creative: { analysis: "" },
+    recommendations: { actions: [], text: "" },
+    flags: "",
+    confidence: "medium"
   };
 
-  if (typeof content !== 'string') {
-    console.warn("⚠️ Content n'est pas une string :", typeof content);
-    return sections;
+  if (!input) return result;
+
+  const extractJSON = (s) => {
+    if (typeof s !== "string") return s;
+    // If the model sneaks extra chars, grab the first JSON object
+    const start = s.indexOf("{");
+    const end = s.lastIndexOf("}");
+    if (start !== -1 && end !== -1 && end > start) {
+      try { return JSON.parse(s.slice(start, end + 1)); }
+      catch { /* fall through */ }
+    }
+    try { return JSON.parse(s); } catch { return {}; }
+  };
+
+  const obj = typeof input === "string" ? extractJSON(input) : input;
+
+  const pick = (...keys) => {
+    for (const k of keys) {
+      const v = obj?.[k];
+      if (v && typeof v === "string") return v.trim();
+      if (v && typeof v === "object" && typeof v.text === "string") return v.text.trim();
+    }
+    return "";
+  };
+
+  result.summary = pick("summary", "overview", "abstract");
+
+  result.emotional.analysis = pick("emotional", "emotions", "affect");
+  result.cognitive.analysis = pick("cognitive", "cognition", "thinking");
+  result.creative.analysis = pick("creative", "imagination", "creativity");
+
+  const recRaw = pick("recommendations", "advice", "next_steps");
+  result.recommendations.text = recRaw;
+
+  // Split any bullets we can find; fallback to sentence-ish splits
+  const bullets = recRaw
+    .split(/\n|(?:\s*[•\-–]\s+)/g)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (bullets.length >= 2) {
+    result.recommendations.actions = bullets;
+  } else {
+    result.recommendations.actions = recRaw
+      .split(/\. (?=[A-Z(•\-–)]|$)/g)
+      .map(s => s.trim())
+      .filter(Boolean);
   }
 
-  try {
-    // DEBUG : Voir le contenu complet généré par GPT
-    console.log("🧠 Contenu GPT complet reçu :\n", content);
+  result.flags = pick("flags", "watchouts", "notes") || "None noted for now.";
+  result.confidence = (obj?.confidence && String(obj.confidence)) || "medium";
 
-    // Regex plus tolérantes
-    const emotionalMatch = content.match(/1\.\s*Emotional Indicators\s*\n?([\s\S]*?)(?=2\.\s*Cognitive Development)/i);
-    const cognitiveMatch = content.match(/2\.\s*Cognitive Development\s*\n?([\s\S]*?)(?=3\.\s*Creative Expression)/i);
-    const creativeMatch = content.match(/3\.\s*Creative Expression\s*\n?([\s\S]*?)(?=4\.\s*Recommendations)/i);
-    const recommendationsMatch = content.match(/4\.\s*Recommendations\s*\n?([\s\S]*)/i);
-
-    // Extraction avec log de vérification
-    if (emotionalMatch) {
-      sections.emotional.analysis = emotionalMatch[1].trim();
-      console.log("✅ Emotional section trouvée");
-    } else {
-      console.warn("❌ Emotional section introuvable");
-    }
-
-    if (cognitiveMatch) {
-      sections.cognitive.analysis = cognitiveMatch[1].trim();
-      console.log("✅ Cognitive section trouvée");
-    } else {
-      console.warn("❌ Cognitive section introuvable");
-    }
-
-    if (creativeMatch) {
-      sections.creative.analysis = creativeMatch[1].trim();
-      console.log("✅ Creative section trouvée");
-    } else {
-      console.warn("❌ Creative section introuvable");
-    }
-
-    if (recommendationsMatch) {
-      const raw = recommendationsMatch[1];
-      const lines = raw.split('\n');
-      const actions = lines
-        .filter(line => line.trim().match(/^[-*•]/))
-        .map(line => line.replace(/^[-*•]\s*/, '').trim());
-
-      sections.recommendations.actions = actions;
-      console.log("✅ Recommendations trouvées :", actions.length, "action(s)");
-    } else {
-      console.warn("❌ Recommendations introuvables");
-    }
-
-    return sections;
-  } catch (err) {
-    console.error("❌ Erreur dans parseAnalysis:", err.message);
-    sections.emotional.analysis = content; // Fallback brut
-    return sections;
-  }
+  return result;
 }
