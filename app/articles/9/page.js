@@ -1,7 +1,7 @@
 import ArticleLayout from "@/components/ArticleLayout";
 
 const article = {
-  id: "9",
+  id: '9',
   title: "Developmental Stages of Drawing",
   description: "What typical drawing milestones look like from scribbles to scenes.",
   category: "Development",
