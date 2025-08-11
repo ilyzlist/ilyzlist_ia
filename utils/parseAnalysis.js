@@ -57,7 +57,7 @@ export function safeParseAnalysis(raw, { fallback } = {}) {
     n[k] = n[k]
       .replace(/\t/g, " ")
       .replace(/\s{2,}/g, " ")
-      .replace(/•\s*/g, "• ") // normalize bullets
+      .replace(/•\s*/g, "• ")
       .trim();
   }
 
@@ -69,13 +69,20 @@ function ensureMinWords(text, minWords) {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length >= minWords) return text;
 
-  if (!text) return ""; // let UI show empty if truly nothing
+  if (!text) return "";
 
-  // Pad gently if the model was too short
   const lastSentence = (text.match(/[^.!?]*[.!?]/g) || [text])[0].trim();
-  const needed = Math.ceil((minWords - words.length) / 10); // ~10 words per sentence
+  const needed = Math.ceil((minWords - words.length) / 10);
   const pad = Array.from({ length: Math.max(1, Math.min(3, needed)) })
     .map(() => lastSentence)
     .join(" ");
   return (text + " " + pad).trim();
 }
+
+// Back-compat: keep the old named export
+export function parseAnalysis(raw, opts) {
+  return safeParseAnalysis(raw, opts);
+}
+
+// Optional default export
+export default safeParseAnalysis;
