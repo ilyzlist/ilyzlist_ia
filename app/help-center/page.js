@@ -1,19 +1,19 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-// MUI icons — per-icon imports
-import HomeIcon from '@mui/icons-material/Home';
-import UploadIcon from '@mui/icons-material/Upload';
-import SettingsIcon from '@mui/icons-material/Settings';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import EmailIcon from '@mui/icons-material/Email';
-import ChatIcon from '@mui/icons-material/Chat';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import Head from 'next/head';
+import {
+  Home as HomeIcon,
+  Upload as UploadIcon,
+  Settings as SettingsIcon,
+  ArrowBack as ArrowBackIcon,
+  Help as HelpIcon,
+  Email as EmailIcon,
+  Chat as ChatIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
+} from '@mui/icons-material';
 
 export default function HelpCenterScreen() {
   const router = useRouter();
@@ -30,37 +30,39 @@ export default function HelpCenterScreen() {
   const faqs = [
     {
       question: "How does the drawing analysis work?",
-      answer:
-        "Our AI analyzes visual elements in your child's drawings to identify emotional expressions and developmental markers. It looks at factors like color usage, composition, and recurring themes.",
+      answer: "Our AI analyzes visual elements in your child's drawings to identify emotional expressions and developmental markers. It looks at factors like color usage, composition, and recurring themes."
     },
     {
       question: "Is my child's data secure?",
-      answer:
-        "Yes, we use end-to-end encryption and comply with COPPA regulations. All drawings and analysis results are stored securely and never shared without your consent.",
+      answer: "Yes, we use end-to-end encryption and comply with COPPA regulations. All drawings and analysis results are stored securely and never shared without your consent."
     },
     {
       question: "Why are my analysis results different than I expected?",
-      answer:
-        "AI interpretations may vary from human perceptions. Our system identifies subtle patterns that might not be immediately obvious. You can always consult a child development specialist for a second opinion.",
+      answer: "AI interpretations may vary from human perceptions. Our system identifies subtle patterns that might not be immediately obvious. You can always consult a child development specialist for a second opinion."
     },
     {
       question: "How often should I upload my child's drawings?",
-      answer:
-        "For best results, upload 1-2 drawings per month to track development over time. Frequent uploads help our AI detect patterns more accurately.",
+      answer: "For best results, upload 1-2 drawings per month to track development over time. Frequent uploads help our AI detect patterns more accurately."
     },
     {
       question: "Can I delete drawings from the app?",
-      answer:
-        "Yes, you can permanently delete any drawing from your gallery. Go to the drawing's detail view and select 'Delete'.",
-    },
+      answer: "Yes, you can permanently delete any drawing from your gallery. Go to the drawing's detail view and select 'Delete'."
+    }
   ];
 
   return (
     <>
+      <Head>
+        <title>Ilyzlist - Help Center</title>
+      </Head>
+
       <div className="help-center-container bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-20">
         {/* Header with Back Button */}
         <header className="flex items-center mb-8">
-          <button onClick={() => router.back()} className="mr-4 text-[#3742D1]">
+          <button 
+            onClick={() => router.back()}
+            className="mr-4 text-[#3742D1]"
+          >
             <ArrowBackIcon />
           </button>
           <h1 className="text-2xl font-bold text-[#3742D1] font-league-spartan">
@@ -74,18 +76,16 @@ export default function HelpCenterScreen() {
             Contact Support
           </h2>
           <div className="space-y-3">
-            {/* Email link */}
-            <a
-              href="mailto:support@ilyzlist.com"
+            <button 
+              onClick={() => router.push('mailto:support@ilyzlist.com')}
               className="w-full flex items-center p-4 bg-[#ECF1FF] rounded-lg hover:bg-[#d9e1fa] transition"
             >
               <EmailIcon className="text-[#3742D1] mr-3" />
               <span className="text-[#3742D1] font-medium font-league-spartan">
                 Email Us
               </span>
-            </a>
-
-            {/* Live Chat (Coming Soon) - disabled */}
+            </button>
+             {/* Live Chat (Coming Soon) - disabled */}
             <button
               disabled
               aria-disabled="true"
@@ -105,6 +105,7 @@ export default function HelpCenterScreen() {
           </div>
         </section>
 
+
         {/* FAQ Section */}
         <section>
           <h2 className="text-lg font-semibold text-[#3742D1] font-league-spartan mb-4">
@@ -112,7 +113,10 @@ export default function HelpCenterScreen() {
           </h2>
           <div className="space-y-3">
             {faqs.map((faq, index) => (
-              <div key={index} className="bg-[#ECF1FF] rounded-lg overflow-hidden">
+              <div 
+                key={index} 
+                className="bg-[#ECF1FF] rounded-lg overflow-hidden"
+              >
                 <button
                   onClick={() => toggleFaq(index)}
                   className="w-full flex justify-between items-center p-4 text-left"
@@ -137,29 +141,43 @@ export default function HelpCenterScreen() {
         </section>
       </div>
 
-      {/* Bottom Navigation — same as your working version */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 px-6 flex justify-around max-w-md mx-auto">
-        <button onClick={() => router.push('/')} className="p-2" aria-label="Home">
+        <button
+          onClick={() => router.push("/")}
+          className="p-2"
+          aria-label="Home"
+        >
           <HomeIcon className="w-6 h-6 text-[#3742D1]" />
         </button>
-        <button onClick={handleUploadDrawing} className="p-2" aria-label="Upload Drawing">
+        <button
+          onClick={handleUploadDrawing}
+          className="p-2"
+          aria-label="Upload Drawing"
+        >
           <UploadIcon className="w-6 h-6 text-[#3742D1]" />
         </button>
-        <button onClick={() => router.push('/account')} className="p-2" aria-label="Account">
+        <button
+          onClick={() => router.push("/account")}
+          className="p-2"
+          aria-label="Account"
+        >
           <SettingsIcon className="w-6 h-6 text-[#3742D1]" />
         </button>
       </nav>
 
       <style jsx global>{`
         @font-face {
-          font-family: 'League Spartan';
-          src: url('/fonts/league-spartan.woff2') format('woff2'),
-               url('/fonts/league-spartan.woff') format('woff');
+          font-family: "League Spartan";
+          src:
+            url("/fonts/league-spartan.woff2") format("woff2"),
+            url("/fonts/league-spartan.woff") format("woff");
           font-weight: 400;
           font-style: normal;
         }
+
         .font-league-spartan {
-          font-family: 'League Spartan', sans-serif;
+          font-family: "League Spartan", sans-serif;
         }
       `}</style>
     </>
