@@ -1,24 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
-// MUI icons (existing dependency)
+// MUI icons — import from per-icon paths (build-safe)
+import HomeIcon from '@mui/icons-material/Home';
+import UploadIcon from '@mui/icons-material/Upload';
+import SettingsIcon from '@mui/icons-material/Settings';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EmailIcon from '@mui/icons-material/Email';
 import ChatIcon from '@mui/icons-material/Chat';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
-// Bottom nav icons (MUI)
-import HomeIcon from '@mui/icons-material/Home';
-import UploadIcon from '@mui/icons-material/Upload';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-
 export default function HelpCenterScreen() {
   const router = useRouter();
-  const pathname = usePathname();
   const [expandedFaq, setExpandedFaq] = useState(null);
+
+  const handleUploadDrawing = () => {
+    router.push('/drawings/upload');
+  };
 
   const toggleFaq = (index) => {
     setExpandedFaq(expandedFaq === index ? null : index);
@@ -36,34 +37,25 @@ export default function HelpCenterScreen() {
         "Yes, we use end-to-end encryption and comply with COPPA regulations. All drawings and analysis results are stored securely and never shared without your consent.",
     },
     {
-      question: 'Why are my analysis results different than I expected?',
+      question: "Why are my analysis results different than I expected?",
       answer:
-        'AI interpretations may vary from human perceptions. Our system identifies subtle patterns that might not be immediately obvious. You can always consult a child development specialist for a second opinion.',
+        "AI interpretations may vary from human perceptions. Our system identifies subtle patterns that might not be immediately obvious. You can always consult a child development specialist for a second opinion.",
     },
     {
       question: "How often should I upload my child's drawings?",
       answer:
-        'For best results, upload 1-2 drawings per month to track development over time. Frequent uploads help our AI detect patterns more accurately.',
+        "For best results, upload 1-2 drawings per month to track development over time. Frequent uploads help our AI detect patterns more accurately.",
     },
     {
-      question: 'Can I delete drawings from the app?',
+      question: "Can I delete drawings from the app?",
       answer:
         "Yes, you can permanently delete any drawing from your gallery. Go to the drawing's detail view and select 'Delete'.",
     },
   ];
 
-  const navItems = [
-    { href: '/', label: 'Home', Icon: HomeIcon },
-    { href: '/drawings/upload', label: 'Upload', Icon: UploadIcon },
-    { href: '/account', label: 'Account', Icon: AccountCircleIcon },
-  ];
-
-  const isActive = (href) =>
-    pathname === href || (href !== '/' && pathname.startsWith(href));
-
   return (
     <>
-      <div className="help-center-container bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-28">
+      <div className="help-center-container bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-20">
         {/* Header with Back Button */}
         <header className="flex items-center mb-8">
           <button onClick={() => router.back()} className="mr-4 text-[#3742D1]">
@@ -143,45 +135,27 @@ export default function HelpCenterScreen() {
         </section>
       </div>
 
-      {/* Bottom Navigation — 3 tabs (Home / Upload / Account) */}
-      <nav
-        className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 py-2 z-50"
-        aria-label="Primary"
-      >
-        <div className="mx-auto max-w-md">
-          <div className="grid grid-cols-3">
-            {navItems.map(({ href, label, Icon }) => {
-              const active = isActive(href);
-              return (
-                <button
-                  key={href}
-                  onClick={() => router.push(href)}
-                  aria-label={label}
-                  aria-current={active ? 'page' : undefined}
-                  className={`flex flex-col items-center justify-center py-1 ${
-                    active ? 'text-[#3742D1]' : 'text-gray-500'
-                  }`}
-                >
-                  <Icon className="w-6 h-6" />
-                  <span className="text-[11px] leading-tight mt-0.5 font-league-spartan">
-                    {label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* Bottom Navigation — restored exactly like your previous layout */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 px-6 flex justify-around max-w-md mx-auto">
+        <button onClick={() => router.push('/')} className="p-2" aria-label="Home">
+          <HomeIcon className="w-6 h-6 text-[#3742D1]" />
+        </button>
+        <button onClick={handleUploadDrawing} className="p-2" aria-label="Upload Drawing">
+          <UploadIcon className="w-6 h-6 text-[#3742D1]" />
+        </button>
+        <button onClick={() => router.push('/account')} className="p-2" aria-label="Account">
+          <SettingsIcon className="w-6 h-6 text-[#3742D1]" />
+        </button>
       </nav>
 
       <style jsx global>{`
         @font-face {
           font-family: 'League Spartan';
           src: url('/fonts/league-spartan.woff2') format('woff2'),
-            url('/fonts/league-spartan.woff') format('woff');
+               url('/fonts/league-spartan.woff') format('woff');
           font-weight: 400;
           font-style: normal;
         }
-
         .font-league-spartan {
           font-family: 'League Spartan', sans-serif;
         }
