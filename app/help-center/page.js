@@ -1,9 +1,11 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-// MUI icons — import from per-icon paths (build-safe)
+// MUI icons — per-icon imports
 import HomeIcon from '@mui/icons-material/Home';
 import UploadIcon from '@mui/icons-material/Upload';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -72,7 +74,7 @@ export default function HelpCenterScreen() {
             Contact Support
           </h2>
           <div className="space-y-3">
-            {/* Use anchor for mailto to avoid router issues */}
+            {/* Email link */}
             <a
               href="mailto:support@ilyzlist.com"
               className="w-full flex items-center p-4 bg-[#ECF1FF] rounded-lg hover:bg-[#d9e1fa] transition"
@@ -135,7 +137,7 @@ export default function HelpCenterScreen() {
         </section>
       </div>
 
-      {/* Bottom Navigation — restored exactly like your previous layout */}
+      {/* Bottom Navigation — same as your working version */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 px-6 flex justify-around max-w-md mx-auto">
         <button onClick={() => router.push('/')} className="p-2" aria-label="Home">
           <HomeIcon className="w-6 h-6 text-[#3742D1]" />
