@@ -4,26 +4,22 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Head from 'next/head';
 
-// Keep existing MUI icons used in the page content
-import {
-  ArrowBack as ArrowBackIcon,
-  Email as EmailIcon,
-  Chat as ChatIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-} from '@mui/icons-material';
+// MUI icons (no extra deps)
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EmailIcon from '@mui/icons-material/Email';
+import ChatIcon from '@mui/icons-material/Chat';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
-// Use Lucide for the bottom nav to match HomeScreen
-import { Home as HomeIcon, Upload as UploadIcon, User as UserIcon } from 'lucide-react';
+// Bottom nav icons (MUI)
+import HomeIcon from '@mui/icons-material/Home';
+import UploadIcon from '@mui/icons-material/Upload';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 export default function HelpCenterScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const [expandedFaq, setExpandedFaq] = useState(null);
-
-  const handleUploadDrawing = () => {
-    router.push('/drawings/upload');
-  };
 
   const toggleFaq = (index) => {
     setExpandedFaq(expandedFaq === index ? null : index);
@@ -46,7 +42,7 @@ export default function HelpCenterScreen() {
         'AI interpretations may vary from human perceptions. Our system identifies subtle patterns that might not be immediately obvious. You can always consult a child development specialist for a second opinion.',
     },
     {
-      question: 'How often should I upload my child\'s drawings?',
+      question: "How often should I upload my child's drawings?",
       answer:
         'For best results, upload 1-2 drawings per month to track development over time. Frequent uploads help our AI detect patterns more accurately.',
     },
@@ -60,7 +56,7 @@ export default function HelpCenterScreen() {
   const navItems = [
     { href: '/', label: 'Home', Icon: HomeIcon },
     { href: '/drawings/upload', label: 'Upload', Icon: UploadIcon },
-    { href: '/account', label: 'Account', Icon: UserIcon },
+    { href: '/account', label: 'Account', Icon: AccountCircleIcon },
   ];
 
   const isActive = (href) =>
@@ -89,15 +85,16 @@ export default function HelpCenterScreen() {
             Contact Support
           </h2>
           <div className="space-y-3">
-            <button
-              onClick={() => router.push('mailto:support@ilyzlist.com')}
+            {/* Use anchor for mailto to avoid router issues */}
+            <a
+              href="mailto:support@ilyzlist.com"
               className="w-full flex items-center p-4 bg-[#ECF1FF] rounded-lg hover:bg-[#d9e1fa] transition"
             >
               <EmailIcon className="text-[#3742D1] mr-3" />
               <span className="text-[#3742D1] font-medium font-league-spartan">
                 Email Us
               </span>
-            </button>
+            </a>
 
             {/* Live Chat (Coming Soon) - disabled */}
             <button
@@ -151,7 +148,7 @@ export default function HelpCenterScreen() {
         </section>
       </div>
 
-      {/* Bottom Navigation — matches HomeScreen (3 tabs, Upload in the middle) */}
+      {/* Bottom Navigation — 3 tabs (Home / Upload / Account) */}
       <nav
         className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 py-2 z-50"
         aria-label="Primary"
