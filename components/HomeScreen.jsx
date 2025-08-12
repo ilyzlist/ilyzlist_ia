@@ -66,14 +66,22 @@ const articles = [
 export default function HomeScreen() {
   const router = useRouter();
   const supabase = createClientComponentClient();
+
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [children, setChildren] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(true);
   const [recentDrawings, setRecentDrawings] = useState([]);
   const [loadingDrawings, setLoadingDrawings] = useState(true);
-  const [activeArticleIndex, setActiveArticleIndex] = useState(0);
+
   const [analysisQuota, setAnalysisQuota] = useState(null);
+  const [currentPlan, setCurrentPlan] = useState(null);
+
+  // banner visibility control
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [userId, setUserId] = useState(null);
+
+  const [activeArticleIndex, setActiveArticleIndex] = useState(0);
 
   const getInitials = (name) => {
     if (!name) return "";
@@ -90,14 +98,33 @@ export default function HomeScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      setUserId(user.id);
+
+      // ⬇️ fetch both quota and plan
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("analysis_quota")
+        .select("analysis_quota, current_plan")
         .eq("id", user.id)
         .single();
 
-      setAnalysisQuota(profileData?.analysis_quota ?? null);
+      const quota = profileData?.analysis_quota ?? null;
+      const plan = profileData?.current_plan ?? null;
 
+      setAnalysisQuota(quota);
+      setCurrentPlan(plan);
+
+      // Show welcome banner only for FREE plan with exactly 1 credit, and only once per device.
+      const lsKey = `ilyzlist:welcomeShown:${user.id}`;
+      const alreadyShown =
+        typeof window !== "undefined" && localStorage.getItem(lsKey) === "1";
+
+      if (!alreadyShown && (plan === "free" || !plan) && quota === 1) {
+        setShowWelcome(true);
+      } else {
+        setShowWelcome(false);
+      }
+
+      // Children
       const { data: childrenData } = await supabase
         .from("children")
         .select("*")
@@ -105,6 +132,7 @@ export default function HomeScreen() {
       setChildren(childrenData || []);
       setLoadingChildren(false);
 
+      // Recent Drawings
       const { data: drawingsData } = await supabase
         .from("drawings")
         .select("id, file_path, file_name, uploaded_at, children(id, name)")
@@ -130,7 +158,16 @@ export default function HomeScreen() {
     };
 
     fetchData();
-  }, []);
+  }, [supabase]);
+
+  const dismissWelcome = () => {
+    if (typeof window !== "undefined" && userId) {
+      try {
+        localStorage.setItem(`ilyzlist:welcomeShown:${userId}`, "1");
+      } catch {}
+    }
+    setShowWelcome(false);
+  };
 
   const handleUploadDrawing = () => router.push("/drawings/upload");
   const handleAddChild = () => router.push("/profile/add");
@@ -186,28 +223,43 @@ export default function HomeScreen() {
             alt="Ilyzlist Logo"
             className="h-10"
             onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = "/images/ilyzlist_logo.png";
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/images/ilyzlist_logo.png";
             }}
           />
         </Link>
         <div className="flex gap-4">
-          <button onClick={() => setShowSearch(!showSearch)} className="p-2" aria-label="Search">
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className="p-2"
+            aria-label="Search"
+          >
             <MdSearch className="w-5 h-5 text-[#3742D1]" />
           </button>
-          <button onClick={() => router.push("/notifications")} className="p-2" aria-label="Notifications">
+          <button
+            onClick={() => router.push("/notifications")}
+            className="p-2"
+            aria-label="Notifications"
+          >
             <MdNotifications className="w-5 h-5 text-[#3742D1]" />
           </button>
-          <button onClick={() => router.push("/settings")} className="p-2" aria-label="Settings">
+          <button
+            onClick={() => router.push("/settings")}
+            className="p-2"
+            aria-label="Settings"
+          >
             <MdSettings className="w-5 h-5 text-[#3742D1]" />
           </button>
         </div>
       </header>
 
-      {/* Quota Info */}
-      {analysisQuota === 1 && (
-        <div className="mb-6 px-4 py-3 bg-[#ECF1FF] rounded-xl text-sm text-[#3742D1] font-medium shadow-sm">
-          🎁 Welcome! You’ve unlocked 1 free drawing analysis to get started.
+      {/* Welcome one-time banner – free plan + 1 credit */}
+      {showWelcome && (
+        <div className="mb-6 px-4 py-3 bg-[#ECF1FF] rounded-xl text-sm text-[#3742D1] font-medium shadow-sm flex items-start justify-between gap-3">
+          <span>🎁 Welcome! You’ve unlocked 1 free drawing analysis to get started.</span>
+          <button onClick={dismissWelcome} className="text-[#3742D1] font-semibold">
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -236,7 +288,10 @@ export default function HomeScreen() {
         ) : children.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {children.map((child) => (
-              <div key={child.id} className="bg-[#ECF1FF] rounded-xl p-4 shadow-sm relative hover:bg-[#d9e1fa] transition-colors">
+              <div
+                key={child.id}
+                className="bg-[#ECF1FF] rounded-xl p-4 shadow-sm relative hover:bg-[#d9e1fa] transition-colors"
+              >
                 <div className="flex flex-col items-center pt-2">
                   <div className="w-16 h-16 rounded-full bg-[#3742D1] flex items-center justify-center text-2xl font-bold text-white mb-3 shadow-md">
                     {getInitials(child.name)}
@@ -266,7 +321,11 @@ export default function HomeScreen() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-[#3742D1]">Recent Drawings</h2>
           <button
-            onClick={recentDrawings.length > 0 ? () => router.push('/drawings/gallery') : handleUploadDrawing}
+            onClick={
+              recentDrawings.length > 0
+                ? () => router.push("/drawings/gallery")
+                : handleUploadDrawing
+            }
             className="text-[#3742D1] text-sm font-medium hover:text-[#2a35b0]"
           >
             {recentDrawings.length > 0 ? "See All" : "Upload"}
@@ -290,14 +349,18 @@ export default function HomeScreen() {
                       alt={drawing.file_name}
                       className="w-full h-full object-contain"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "/images/default-drawing.png";
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "/images/default-drawing.png";
                       }}
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 truncate">{drawing.file_name}</p>
-                    <p className="text-sm text-gray-600 truncate">{drawing.children?.name}</p>
+                    <p className="font-medium text-gray-800 truncate">
+                      {drawing.file_name}
+                    </p>
+                    <p className="text-sm text-gray-600 truncate">
+                      {drawing.children?.name}
+                    </p>
                     <p className="text-xs text-[#809CFF] mt-1">
                       {new Date(drawing.uploaded_at).toLocaleDateString()}
                     </p>
@@ -326,15 +389,12 @@ export default function HomeScreen() {
       <section className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-[#3742D1]">Practical Guide</h2>
-          <button
-            onClick={() => router.push("/practical-guide")}
-            className="text-[#3742D1] text-sm font-medium hover:text-[#2a35b0]"
-          >
-            See All
-          </button>
         </div>
         <div className="relative">
-          <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide" onScroll={handleScroll}>
+          <div
+            className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide"
+            onScroll={handleScroll}
+          >
             {articles.map((article) => (
               <button
                 key={article.id}
@@ -343,11 +403,17 @@ export default function HomeScreen() {
               >
                 <div className="flex items-center gap-3 mb-3">
                   {article.icon}
-                  <span className="text-sm text-[#3742D1] font-medium">{article.category}</span>
-                  <span className="text-xs text-gray-500">• {article.readTime}</span>
+                  <span className="text-sm text-[#3742D1] font-medium">
+                    {article.category}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    • {article.readTime}
+                  </span>
                 </div>
                 <ArticleImage article={article} />
-                <h3 className="text-base font-bold text-gray-800 mb-1">{article.title}</h3>
+                <h3 className="text-base font-bold text-gray-800 mb-1">
+                  {article.title}
+                </h3>
               </button>
             ))}
           </div>
@@ -357,14 +423,18 @@ export default function HomeScreen() {
             <button
               key={index}
               onClick={() => {
-                const container = document.querySelector('.overflow-x-auto');
+                const container = document.querySelector(".overflow-x-auto");
                 container.scrollTo({
                   left: index * 272,
-                  behavior: 'smooth'
+                  behavior: "smooth",
                 });
                 setActiveArticleIndex(index);
               }}
-              className={`w-2 h-2 rounded-full transition-colors ${index === activeArticleIndex ? 'bg-[#3742D1] w-4' : 'bg-[#D6E0FF]'}`}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                index === activeArticleIndex
+                  ? "bg-[#3742D1] w-4"
+                  : "bg-[#D6E0FF]"
+              }`}
               aria-label={`Go to article ${index + 1}`}
             />
           ))}
@@ -382,15 +452,27 @@ export default function HomeScreen() {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#3742D1] py-2 px-6 flex justify-around max-w-md mx-auto rounded-t-2xl shadow-lg">
-        <button onClick={() => router.push('/')} className="p-2 flex flex-col items-center" aria-label="Home">
+        <button
+          onClick={() => router.push("/")}
+          className="p-2 flex flex-col items-center"
+          aria-label="Home"
+        >
           <MdHome className="w-6 h-6 text-white" />
           <span className="text-white text-xs mt-1">Home</span>
         </button>
-        <button onClick={handleUploadDrawing} className="p-2 flex flex-col items-center" aria-label="Upload">
+        <button
+          onClick={handleUploadDrawing}
+          className="p-2 flex flex-col items-center"
+          aria-label="Upload"
+        >
           <MdUpload className="w-6 h-6 text-white" />
           <span className="text-white text-xs mt-1">Upload</span>
         </button>
-        <button onClick={() => router.push('/account')} className="p-2 flex flex-col items-center" aria-label="Account">
+        <button
+          onClick={() => router.push("/account")}
+          className="p-2 flex flex-col items-center"
+          aria-label="Account"
+        >
           <MdAccountCircle className="w-6 h-6 text-white" />
           <span className="text-white text-xs mt-1">Account</span>
         </button>
