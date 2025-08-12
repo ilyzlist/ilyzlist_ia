@@ -142,44 +142,20 @@ export default function HelpCenterScreen() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 px-6 flex justify-around max-w-md mx-auto">
-        <button
-          onClick={() => router.push("/")}
-          className="p-2"
-          aria-label="Home"
-        >
-          <HomeIcon className="w-6 h-6 text-[#3742D1]" />
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#3742D1] py-3 px-6 flex justify-around max-w-md mx-auto rounded-t-2xl">
+        <button onClick={() => router.push('/')} className="flex flex-col items-center text-white" aria-label="Home">
+          <FaHome className="text-xl" />
+          <span className="text-xs mt-1">Home</span>
         </button>
-        <button
-          onClick={handleUploadDrawing}
-          className="p-2"
-          aria-label="Upload Drawing"
-        >
-          <UploadIcon className="w-6 h-6 text-[#3742D1]" />
+        <button onClick={() => router.push('/drawings/upload')} className="flex flex-col items-center text-white" aria-label="Upload">
+          <FaUpload className="text-xl" />
+          <span className="text-xs mt-1">Upload</span>
         </button>
-        <button
-          onClick={() => router.push("/account")}
-          className="p-2"
-          aria-label="Account"
-        >
-          <SettingsIcon className="w-6 h-6 text-[#3742D1]" />
+        <button onClick={() => router.push('/account')} className="flex flex-col items-center text-white" aria-label="Account">
+          <FaUser className="text-xl" />
+          <span className="text-xs mt-1">Account</span>
         </button>
       </nav>
-
-      <style jsx global>{`
-        @font-face {
-          font-family: "League Spartan";
-          src:
-            url("/fonts/league-spartan.woff2") format("woff2"),
-            url("/fonts/league-spartan.woff") format("woff");
-          font-weight: 400;
-          font-style: normal;
-        }
-
-        .font-league-spartan {
-          font-family: "League Spartan", sans-serif;
-        }
-      `}</style>
-    </>
+    </div>
   );
 }
