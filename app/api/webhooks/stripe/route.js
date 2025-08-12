@@ -1,113 +1,165 @@
 // app/api/webhooks/stripe/route.js
-
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-/**
- * Next.js App Router notes:
- * - Do NOT export `config.api.bodyParser = false`; that's for Pages Router.
- * - We must read the RAW body via request.text() and pass the string directly to Stripe.
- * - Keep runtime on nodejs so Stripe's crypto works as expected.
- */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// --- Stripe & Supabase clients ---
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2022-11-15',
-});
-
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// --- Plan details (keep in sync with your product catalog) ---
+// Display allowances only (don't use to compute credits except at cycle reset)
 const PLAN_DETAILS = {
-  basic: { analyses: 15, name: 'Basic' },
+  free:    { analyses: 1,  name: 'Free' },
+  basic:   { analyses: 15, name: 'Basic' },
   premium: { analyses: 25, name: 'Premium' },
-  free: { analyses: 1, name: 'Free' },
 };
 
-// --- Helpers ---
+// Optional hard fallback for any legacy price ids still live
+const PRICE_TO_PLAN = {
+  // 'price_OLD123': 'basic',
+  // 'price_OLD456': 'premium',
+};
+
 const safeTrim = (v) => (typeof v === 'string' ? v.trim() : '');
+const isPaidStatus = (s) => s === 'active' || s === 'trialing';
 
-function getPlanIdFromPrice(priceId) {
-  const cleanId = safeTrim(priceId);
-  const basicId = safeTrim(process.env.NEXT_PUBLIC_STRIPE_BASIC_PLAN_PRICE_ID);
-  const premiumId = safeTrim(process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PLAN_PRICE_ID);
-
-  if (basicId && cleanId === basicId) return 'basic';
-  if (premiumId && cleanId === premiumId) return 'premium';
-  return 'free';
-}
-
-/**
- * Try verifying with LIVE secret first (if present), then TEST secret (if present).
- * This helps during transition; in steady state your deployed env should have only ONE correct secret.
- */
 function verifyStripeSignature(rawBody, signature) {
   const live = safeTrim(process.env.STRIPE_WEBHOOK_SECRET_LIVE);
   const test = safeTrim(process.env.STRIPE_WEBHOOK_SECRET_TEST);
-  const single = safeTrim(process.env.STRIPE_WEBHOOK_SECRET); // fallback if you use a single var
+  const single = safeTrim(process.env.STRIPE_WEBHOOK_SECRET);
 
   const tried = [];
 
   if (live) {
-    try {
-      const e = stripe.webhooks.constructEvent(rawBody, signature, live);
-      return { event: e, secretUsed: 'LIVE' };
-    } catch (err) {
-      tried.push(`LIVE(${err.message})`);
-    }
+    try { return { event: stripe.webhooks.constructEvent(rawBody, signature, live), secretUsed: 'LIVE' }; }
+    catch (err) { tried.push(`LIVE(${err.message})`); }
   }
-
   if (test) {
-    try {
-      const e = stripe.webhooks.constructEvent(rawBody, signature, test);
-      return { event: e, secretUsed: 'TEST' };
-    } catch (err) {
-      tried.push(`TEST(${err.message})`);
-    }
+    try { return { event: stripe.webhooks.constructEvent(rawBody, signature, test), secretUsed: 'TEST' }; }
+    catch (err) { tried.push(`TEST(${err.message})`); }
   }
-
   if (single) {
-    try {
-      const e = stripe.webhooks.constructEvent(rawBody, signature, single);
-      return { event: e, secretUsed: 'SINGLE' };
-    } catch (err) {
-      tried.push(`SINGLE(${err.message})`);
-    }
+    try { return { event: stripe.webhooks.constructEvent(rawBody, signature, single), secretUsed: 'SINGLE' }; }
+    catch (err) { tried.push(`SINGLE(${err.message})`); }
   }
 
-  const message = `No signatures matched. Tried: ${tried.join(' | ')}`;
-  throw new Error(message);
+  throw new Error(`No signatures matched. Tried: ${tried.join(' | ')}`);
 }
 
-// --- Handlers ---
+// ---------- PLAN RESOLUTION (robust) ----------
+async function resolvePlanId(subscription) {
+  // 1) Explicit metadata on subscription (from Checkout/session.subscription_data.metadata)
+  const metaPlan = safeTrim(subscription?.metadata?.planId);
+  if (metaPlan && PLAN_DETAILS[metaPlan]) return metaPlan;
+
+  // 2) Price metadata (set in Stripe Dashboard): plan_id=basic/premium
+  const priceId = subscription?.items?.data?.[0]?.price?.id;
+  if (priceId) {
+    try {
+      const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+      const byMeta = safeTrim(price?.metadata?.plan_id);
+      if (byMeta && PLAN_DETAILS[byMeta]) return byMeta;
+
+      // 3) lookup_key heuristics
+      const lk = String(price.lookup_key || '').toLowerCase();
+      if (lk.includes('basic')) return 'basic';
+      if (lk.includes('premium')) return 'premium';
+    } catch (e) {
+      console.warn('[WEBHOOK] Could not retrieve price', priceId, e.message);
+    }
+    // 4) hard map fallback
+    if (PRICE_TO_PLAN[priceId]) return PRICE_TO_PLAN[priceId];
+  }
+
+  // 5) unknown → free
+  return 'free';
+}
+
+// ---------- DB HELPERS ----------
+async function findUserIdByCustomer(stripeCustomerId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[WEBHOOK] Supabase error finding user by customer:', error);
+  }
+  return data?.id || null;
+}
+
+async function writeSubscription(userId, subscription, planId) {
+  const priceId = subscription?.items?.data?.[0]?.price?.id || null;
+
+  const { error } = await supabase.from('subscriptions').upsert({
+    user_id: userId,
+    stripe_subscription_id: subscription.id,
+    stripe_price_id: priceId,
+    status: subscription.status,
+    plan_type: planId,
+    renews_at: new Date(subscription.current_period_end * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+    // DO NOT touch analyses_remaining here; handle on cycle reset only.
+  });
+  if (error) throw error;
+}
+
+async function writeProfilePlan(userId, planId) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      subscription_plan: planId,
+      current_plan: planId,
+      analysis_limit: PLAN_DETAILS[planId]?.analyses ?? PLAN_DETAILS.free.analyses,
+      // DO NOT reset analysis_quota here; handle on cycle reset only.
+      plan_updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
+async function resetMonthlyQuota(userId, planId) {
+  const allowance = PLAN_DETAILS[planId]?.analyses ?? PLAN_DETAILS.free.analyses;
+
+  const { error: pErr } = await supabase
+    .from('profiles')
+    .update({ analysis_quota: allowance })
+    .eq('id', userId);
+  if (pErr) throw pErr;
+
+  const { error: sErr } = await supabase
+    .from('subscriptions')
+    .update({ analyses_remaining: allowance, updated_at: new Date().toISOString() })
+    .eq('user_id', userId);
+  if (sErr) throw sErr;
+}
+
+// ---------- EVENT HANDLERS ----------
 export async function POST(request) {
   const signature = request.headers.get('stripe-signature');
-
   if (!signature) {
     return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
   }
 
-  let rawBody;
+  let rawBody = '';
   try {
-    // IMPORTANT: use the exact raw string body
     rawBody = await request.text();
   } catch (err) {
     console.error('[WEBHOOK] Failed to read raw body:', err);
     return NextResponse.json({ error: 'Unable to read request body' }, { status: 400 });
   }
 
-  let event;
-  let usedSecret = '';
+  let event, usedSecret;
   try {
-    const result = verifyStripeSignature(rawBody, signature);
-    event = result.event;
-    usedSecret = result.secretUsed;
+    const res = verifyStripeSignature(rawBody, signature);
+    event = res.event;
+    usedSecret = res.secretUsed;
   } catch (err) {
     console.error('⚠️ Webhook signature verification failed:', err.message);
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
@@ -118,128 +170,96 @@ export async function POST(request) {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
-        await handleCheckoutSession(event.data.object);
+        // Initial purchase
+        const session = event.data.object;
+        if (!session.subscription) break;
+        const sub = await stripe.subscriptions.retrieve(session.subscription);
+        await applyPlanFromSubscription(sub, session.metadata?.userId);
         break;
       }
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.resumed':
-      case 'customer.subscription.paused':
-      case 'invoice.payment_succeeded': {
-        // invoice.payment_succeeded covers renewals as well
-        await handleSubscriptionChange(event.data.object);
+      case 'customer.subscription.paused': {
+        const sub = event.data.object;
+        await applyPlanFromSubscription(sub, sub.metadata?.userId);
         break;
       }
+
+      case 'invoice.payment_succeeded': {
+        // Reset credits on new cycle (or initial creation)
+        const invoice = event.data.object;
+        if (!invoice.subscription) break;
+
+        // Only handle subscription cycles
+        const reason = invoice.billing_reason; // 'subscription_cycle' OR 'subscription_create' etc.
+        if (!['subscription_cycle', 'subscription_create'].includes(reason)) break;
+
+        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+        await handleCycleReset(sub);
+        break;
+      }
+
       default:
-        // Ignore other events
+        // ignore
         break;
     }
+
+    return NextResponse.json({ received: true });
   } catch (err) {
     console.error('[WEBHOOK] Handler error:', err);
     return NextResponse.json({ error: 'Failed to process event' }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }
 
-async function handleCheckoutSession(session) {
-  console.log('[WEBHOOK] checkout.session.completed', {
-    id: session.id,
-    customer: session.customer,
-    subscription: session.subscription,
-    metadata: session.metadata,
-  });
-
-  if (!session.subscription) return;
-
-  const subscription = await stripe.subscriptions.retrieve(session.subscription);
-  await updateUserProfile(subscription, session.metadata?.userId);
-}
-
-async function handleSubscriptionChange(obj) {
-  // obj can be a Subscription or an Invoice (on renewals)
-  let subscription;
-
-  if (obj.object === 'subscription') {
-    subscription = obj;
-  } else if (obj.object === 'invoice' && obj.subscription) {
-    subscription = await stripe.subscriptions.retrieve(obj.subscription);
-  } else {
-    console.log('[WEBHOOK] Unsupported object for subscription change:', obj.object);
-    return;
-  }
-
-  console.log('[WEBHOOK] subscription change', {
-    id: subscription.id,
-    customer: subscription.customer,
-    status: subscription.status,
-    metadata: subscription.metadata,
-  });
-
-  await updateUserProfile(subscription, subscription.metadata?.userId);
-}
-
-async function updateUserProfile(subscription, explicitUserId) {
-  const firstItem = subscription.items?.data?.[0];
-  const priceId = firstItem?.price?.id;
-  const planId = getPlanIdFromPrice(priceId);
-  const planDetails = PLAN_DETAILS[planId] || PLAN_DETAILS.free;
-
-  // Resolve userId: prefer metadata.userId, else look up by stripe_customer_id
+async function applyPlanFromSubscription(subscription, explicitUserId) {
+  const status = subscription.status;
+  const priceId = subscription?.items?.data?.[0]?.price?.id;
   let userId = safeTrim(explicitUserId);
-  if (!userId) {
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('stripe_customer_id', subscription.customer)
-      .maybeSingle();
 
-    if (profileErr) {
-      console.error('[WEBHOOK] Supabase error fetching profile by customer:', profileErr);
-    }
-    userId = profile?.id || '';
+  if (!userId) {
+    userId = await findUserIdByCustomer(subscription.customer);
   }
-
   if (!userId) {
-    console.warn(
-      `[WEBHOOK] No userId found for customer=${subscription.customer}. ` +
-        `Ensure you store stripe_customer_id in profiles at checkout creation.`
-    );
+    console.warn('[WEBHOOK] No user found for customer', subscription.customer);
     return;
   }
 
-  console.log(`[WEBHOOK] Updating user ${userId} → plan=${planId} (price=${priceId})`);
+  // Resolve desired plan (robust)
+  const resolvedPlan = await resolvePlanId(subscription);
 
-  const profileUpdate = {
-    subscription_plan: planId,
-    current_plan: planId,
-    analysis_limit: planDetails.analyses,
-    analysis_quota: planDetails.analyses,
-    plan_updated_at: new Date().toISOString(),
-  };
+  // Set plan only to paid plans when status is active/trialing; else free
+  const planId = isPaidStatus(status) ? resolvedPlan : 'free';
 
-  const { error: profErr } = await supabase.from('profiles').update(profileUpdate).eq('id', userId);
-  if (profErr) {
-    console.error('[WEBHOOK] Supabase error updating profiles:', profErr, profileUpdate);
-    throw profErr;
+  // If plan resolution failed but subscription is active, avoid clobbering to free:
+  if (isPaidStatus(status) && planId === 'free') {
+    // Keep existing plan if it is already a paid plan
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('current_plan')
+      .eq('id', userId)
+      .maybeSingle();
+    if (prof?.current_plan && prof.current_plan !== 'free') {
+      console.warn(`[WEBHOOK] Plan resolution unknown for active sub; preserving existing plan=${prof.current_plan}`);
+      await writeSubscription(userId, subscription, prof.current_plan);
+      return;
+    }
   }
 
-  const subscriptionRow = {
-    user_id: userId,
-    stripe_subscription_id: subscription.id,
-    stripe_price_id: priceId || null,
-    status: subscription.status,
-    plan_type: planId,
-    analyses_remaining: planDetails.analyses,
-    renews_at: new Date(subscription.current_period_end * 1000).toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  console.log(`[WEBHOOK] applyPlan user=${userId} status=${status} price=${priceId} -> plan=${planId}`);
+  await writeSubscription(userId, subscription, planId);
+  await writeProfilePlan(userId, planId);
+}
 
-  const { error: subErr } = await supabase.from('subscriptions').upsert(subscriptionRow);
-  if (subErr) {
-    console.error('[WEBHOOK] Supabase error upserting subscriptions:', subErr, subscriptionRow);
-    throw subErr;
-  }
+async function handleCycleReset(subscription) {
+  const status = subscription.status;
+  if (!isPaidStatus(status)) return;
 
-  console.log('[WEBHOOK] Profile + subscription updated successfully.');
+  let userId = await findUserIdByCustomer(subscription.customer);
+  if (!userId) return;
+
+  const planId = await resolvePlanId(subscription);
+  console.log(`[WEBHOOK] cycle reset for user=${userId} plan=${planId}`);
+  await resetMonthlyQuota(userId, planId);
 }
