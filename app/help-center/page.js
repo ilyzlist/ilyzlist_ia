@@ -85,14 +85,23 @@ export default function HelpCenterScreen() {
                 Email Us
               </span>
             </button>
-            <button 
-              onClick={() => router.push('/help-center/chat')}
-              className="w-full flex items-center p-4 bg-[#ECF1FF] rounded-lg hover:bg-[#d9e1fa] transition"
+
+            {/* Live Chat (Coming Soon) - disabled */}
+            <button
+              disabled
+              aria-disabled="true"
+              title="Coming soon"
+              className="w-full flex items-center p-4 bg-[#ECF1FF] rounded-lg opacity-60 cursor-not-allowed"
             >
               <ChatIcon className="text-[#3742D1] mr-3" />
-              <span className="text-[#3742D1] font-medium font-league-spartan">
-                Live Chat
-              </span>
+              <div className="flex items-center">
+                <span className="text-[#3742D1] font-medium font-league-spartan">
+                  Live Chat
+                </span>
+                <span className="ml-2 text-xs uppercase tracking-wide bg-[#3742D1]/10 text-[#3742D1] px-2 py-0.5 rounded font-league-spartan">
+                  Coming soon
+                </span>
+              </div>
             </button>
           </div>
         </section>
