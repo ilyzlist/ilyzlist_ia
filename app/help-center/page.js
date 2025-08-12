@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import Head from 'next/head';
 
-// MUI icons (no extra deps)
+// MUI icons (existing dependency)
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EmailIcon from '@mui/icons-material/Email';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -64,10 +63,6 @@ export default function HelpCenterScreen() {
 
   return (
     <>
-      <Head>
-        <title>Ilyzlist - Help Center</title>
-      </Head>
-
       <div className="help-center-container bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-28">
         {/* Header with Back Button */}
         <header className="flex items-center mb-8">
