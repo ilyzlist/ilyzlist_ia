@@ -210,7 +210,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <div className="bg-white rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-24">
+    <div className="bg-white/50 backdrop-filter backdrop-blur-lg rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-24 border border-white border-opacity-20 shadow-lg">
       <Head>
         <title>Ilyzlist - Home</title>
       </Head>
