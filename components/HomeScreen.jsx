@@ -210,13 +210,19 @@ export default function HomeScreen() {
   };
 
   return (
-    <div className="bg-white/50 backdrop-filter backdrop-blur-lg rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-24 border border-white border-opacity-20 shadow-lg">
+    <div className="bg-gradient-to-b from-[#f6f9ff] to-[#e8f0fe] rounded-[30px] max-w-md mx-auto min-h-screen p-6 pb-24 relative overflow-hidden">
+      {/* Background elements for glass effect */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-[#7BDCB5] opacity-10 mix-blend-multiply"></div>
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-[#3742D1] opacity-10 mix-blend-multiply"></div>
+      </div>
+
       <Head>
         <title>Ilyzlist - Home</title>
       </Head>
 
       {/* Header */}
-      <header className="flex justify-between items-center mb-4">
+      <header className="flex justify-between items-center mb-4 relative z-10">
         <Link href="/">
           <img
             src="/images/ilyzlist_logo.webp"
@@ -255,8 +261,8 @@ export default function HomeScreen() {
 
       {/* Welcome one-time banner – free plan + 1 credit */}
       {showWelcome && (
-        <div className="mb-6 px-4 py-3 bg-[#ECF1FF] rounded-xl text-sm text-[#3742D1] font-medium shadow-sm flex items-start justify-between gap-3">
-          <span>🎁 Welcome! You’ve unlocked 1 free drawing analysis to get started.</span>
+        <div className="mb-6 px-4 py-3 bg-white/70 backdrop-blur-md rounded-xl text-sm text-[#3742D1] font-medium shadow-sm flex items-start justify-between gap-3 relative z-10 border border-white/30">
+          <span>🎁 Welcome! You've unlocked 1 free drawing analysis to get started.</span>
           <button onClick={dismissWelcome} className="text-[#3742D1] font-semibold">
             Dismiss
           </button>
@@ -264,19 +270,19 @@ export default function HomeScreen() {
       )}
 
       {/* Children Section */}
-      <section className="mb-8">
+      <section className="mb-8 relative z-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-[#3742D1]">My Children</h2>
           <div className="flex gap-2">
             <button
               onClick={handleViewProfiles}
-              className="bg-[#ECF1FF] text-[#3742D1] px-3 py-1 rounded-full text-xs font-semibold shadow-sm hover:bg-[#d9e1fa]"
+              className="bg-white/70 backdrop-blur-md text-[#3742D1] px-3 py-1 rounded-full text-xs font-semibold shadow-sm hover:bg-white/90 transition-all border border-white/30"
             >
               View Profiles
             </button>
             <button
               onClick={handleAddChild}
-              className="bg-[#3742D1] text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm hover:bg-[#2a35b0]"
+              className="bg-[#3742D1] text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm hover:bg-[#2a35b0] transition-all"
             >
               Add Child
             </button>
@@ -290,7 +296,7 @@ export default function HomeScreen() {
             {children.map((child) => (
               <div
                 key={child.id}
-                className="bg-[#ECF1FF] rounded-xl p-4 shadow-sm relative hover:bg-[#d9e1fa] transition-colors"
+                className="bg-white/70 backdrop-blur-md rounded-xl p-4 shadow-sm relative hover:bg-white/90 transition-all border border-white/30"
               >
                 <div className="flex flex-col items-center pt-2">
                   <div className="w-16 h-16 rounded-full bg-[#3742D1] flex items-center justify-center text-2xl font-bold text-white mb-3 shadow-md">
@@ -304,7 +310,7 @@ export default function HomeScreen() {
             ))}
           </div>
         ) : (
-          <div className="bg-[#ECF1FF] rounded-xl p-6 text-center text-gray-800 shadow-sm">
+          <div className="bg-white/70 backdrop-blur-md rounded-xl p-6 text-center text-gray-800 shadow-sm border border-white/30">
             <p>No children added yet.</p>
             <button
               onClick={handleAddChild}
@@ -317,7 +323,7 @@ export default function HomeScreen() {
       </section>
 
       {/* Recent Drawings */}
-      <section className="mb-8">
+      <section className="mb-8 relative z-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-[#3742D1]">Recent Drawings</h2>
           <button
@@ -340,7 +346,7 @@ export default function HomeScreen() {
               <button
                 key={drawing.id}
                 onClick={() => router.push(`/drawings/analysis/${drawing.id}`)}
-                className="w-full bg-[#ECF1FF] rounded-xl p-4 hover:bg-[#d9e1fa] transition-colors shadow-sm text-left"
+                className="w-full bg-white/70 backdrop-blur-md rounded-xl p-4 hover:bg-white/90 transition-all shadow-sm text-left border border-white/30"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 rounded-lg bg-gray-200 overflow-hidden flex items-center justify-center">
@@ -372,7 +378,7 @@ export default function HomeScreen() {
         ) : (
           <button
             onClick={handleUploadDrawing}
-            className="w-full bg-[#ECF1FF] rounded-xl p-6 hover:bg-[#d9e1fa] transition-colors flex flex-col items-center shadow-sm"
+            className="w-full bg-white/70 backdrop-blur-md rounded-xl p-6 hover:bg-white/90 transition-all flex flex-col items-center shadow-sm border border-white/30"
           >
             <div className="w-16 h-16 rounded-full bg-[#7BDCB5] flex items-center justify-center mb-3 shadow-md">
               <MdPalette className="text-white w-8 h-8" />
@@ -386,7 +392,7 @@ export default function HomeScreen() {
       </section>
 
       {/* Practical Guide */}
-      <section className="mb-8">
+      <section className="mb-8 relative z-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-[#3742D1]">Practical Guide</h2>
         </div>
@@ -399,7 +405,7 @@ export default function HomeScreen() {
               <button
                 key={article.id}
                 onClick={() => router.push(`/articles/${article.id}`)}
-                className="flex-shrink-0 w-64 bg-[#ECF1FF] rounded-xl p-4 hover:bg-[#d9e1fa] transition-colors shadow-sm text-left"
+                className="flex-shrink-0 w-64 bg-white/70 backdrop-blur-md rounded-xl p-4 hover:bg-white/90 transition-all shadow-sm text-left border border-white/30"
               >
                 <div className="flex items-center gap-3 mb-3">
                   {article.icon}
@@ -444,37 +450,37 @@ export default function HomeScreen() {
       {/* Add New Drawing Floating Button */}
       <button
         onClick={handleUploadDrawing}
-        className="fixed bottom-24 right-6 bg-[#3742D1] text-white rounded-full p-4 shadow-lg hover:bg-[#2a35b0] transition-colors"
+        className="fixed bottom-24 right-6 bg-[#3742D1] text-white rounded-full p-4 shadow-lg hover:bg-[#2a35b0] transition-colors z-20"
         aria-label="Add Drawing"
       >
         <MdAdd className="w-6 h-6" />
       </button>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#3742D1] py-2 px-6 flex justify-around max-w-md mx-auto rounded-t-2xl shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/70 backdrop-blur-md py-2 px-6 flex justify-around max-w-md mx-auto rounded-t-2xl shadow-lg border-t border-white/30 z-20">
         <button
           onClick={() => router.push("/")}
           className="p-2 flex flex-col items-center"
           aria-label="Home"
         >
-          <MdHome className="w-6 h-6 text-white" />
-          <span className="text-white text-xs mt-1">Home</span>
+          <MdHome className="w-6 h-6 text-[#3742D1]" />
+          <span className="text-[#3742D1] text-xs mt-1">Home</span>
         </button>
         <button
           onClick={handleUploadDrawing}
           className="p-2 flex flex-col items-center"
           aria-label="Upload"
         >
-          <MdUpload className="w-6 h-6 text-white" />
-          <span className="text-white text-xs mt-1">Upload</span>
+          <MdUpload className="w-6 h-6 text-[#3742D1]" />
+          <span className="text-[#3742D1] text-xs mt-1">Upload</span>
         </button>
         <button
           onClick={() => router.push("/account")}
           className="p-2 flex flex-col items-center"
           aria-label="Account"
         >
-          <MdAccountCircle className="w-6 h-6 text-white" />
-          <span className="text-white text-xs mt-1">Account</span>
+          <MdAccountCircle className="w-6 h-6 text-[#3742D1]" />
+          <span className="text-[#3742D1] text-xs mt-1">Account</span>
         </button>
       </nav>
     </div>
