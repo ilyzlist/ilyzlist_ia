@@ -24,13 +24,13 @@ export default function PrivacyPolicyScreen() {
       body: (
         <>
           <p className="mb-3">
-            Ilyzlist (“we”, “our”, “us”) operates the <strong>ilyzlist.ia</strong> mobile/web app that analyzes
+            Ilyzlist (“we”, “our”, “us”) operates the <strong>ilyzlist-ia</strong> mobile/web app that analyzes
             children’s drawings to help parents and educators observe emotional and developmental signals. This
             Privacy Policy explains how we handle personal data of adult users (parents/guardians/teachers) and
             data about children that those adults choose to upload.
           </p>
           <p className="text-sm">
-            <strong>Controller:</strong> Ilyzlist. Contact: <a href="mailto:privacy@ilyzlist.com" className="underline">privacy@ilyzlist.com</a>.
+            <strong>Controller:</strong> Ilyzlist. Contact: <a href="mailto:privacy@ilyzlist.io" className="underline">privacy@ilyzlist.io</a>.
             We are based in France and follow the EU GDPR and French CNIL guidance. When used in the U.S., we also
             apply COPPA. For California residents, we provide CCPA/CPRA disclosures and rights.
           </p>
@@ -45,7 +45,7 @@ export default function PrivacyPolicyScreen() {
           <li><strong>Adult User:</strong> Parent/guardian/teacher who creates an account and controls a child’s data in the app.</li>
           <li><strong>Child:</strong> A minor whose drawing(s) or related information is uploaded by an Adult User.</li>
           <li><strong>Processing:</strong> Any operation performed on personal data (e.g., storage, analysis).</li>
-          <li><strong>Service:</strong> The ilyzlist.ia app, API, and related websites.</li>
+          <li><strong>Service:</strong> The ilyzlist-ia app, API, and related websites.</li>
         </ul>
       ),
     },
@@ -199,7 +199,7 @@ export default function PrivacyPolicyScreen() {
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li>We do not “sell” personal information or share for cross-context behavioral advertising.</li>
           <li>Rights include: know/access, correct, delete, and limit use of sensitive PI.</li>
-          <li>Submit requests via <a href="mailto:privacy@ilyzlist.com" className="underline">privacy@ilyzlist.com</a>. We will verify and respond as required by law.</li>
+          <li>Submit requests via <a href="mailto:privacy@ilyzlist.io" className="underline">privacy@ilyzlist.io</a>. We will verify and respond as required by law.</li>
         </ul>
       ),
     },
@@ -221,7 +221,7 @@ export default function PrivacyPolicyScreen() {
       body: (
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li><strong>Delete content:</strong> delete any drawing or child profile from the app.</li>
-          <li><strong>Account deletion:</strong> request in settings or via <a href="mailto:privacy@ilyzlist.com" className="underline">privacy@ilyzlist.com</a>.</li>
+          <li><strong>Account deletion:</strong> request in settings or via <a href="mailto:privacy@ilyzlist.io" className="underline">privacy@ilyzlist.io</a>.</li>
           <li><strong>AI training opt-out:</strong> toggle off in settings or email us. We will exclude future uploads from training and, where feasible, remove past items from future training sets.</li>
           <li><strong>Marketing opt-out:</strong> unsubscribe links in emails.</li>
         </ul>
@@ -254,7 +254,7 @@ export default function PrivacyPolicyScreen() {
       title: '18) Contact & DPO',
       body: (
         <p className="text-sm">
-          Email: <a href="mailto:privacy@ilyzlist.com" className="underline">privacy@ilyzlist.com</a>
+          Email: <a href="mailto:privacy@ilyzlist.io" className="underline">privacy@ilyzlist.io</a>
           <br />
           If you are in the EEA/UK, you may also contact your local supervisory authority (e.g., CNIL in France).
           <br />
